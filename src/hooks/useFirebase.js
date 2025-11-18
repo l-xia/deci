@@ -6,13 +6,14 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { firebaseStorage } from '../utils/firebaseStorage';
 import { debounce } from '../utils/debounce';
 import { DEBOUNCE_DELAY, STORAGE_KEYS } from '../constants';
+import { auth } from '../firebase';
 
 export function useFirebase(posthog) {
   const [initialized, setInitialized] = useState(false);
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saving', 'saved', 'error'
   const [saveError, setSaveError] = useState(null);
 
-  // Initialize Firebase
+  // Initialize Firebase only after user is authenticated
   useEffect(() => {
     const initFirebase = async () => {
       try {
@@ -28,16 +29,25 @@ export function useFirebase(posthog) {
           const error = firebaseStorage.getLastError();
           console.error('Failed to initialize Firebase:', error);
           posthog?.capture('firebase_init_error', { error: error?.message });
-          alert('Failed to connect to Firebase. The app will not save your data. Please refresh the page or check your internet connection.');
         }
       } catch (error) {
         console.error('Unexpected error during Firebase initialization:', error);
         posthog?.capture('firebase_init_error_unexpected', { error: error.message });
-        alert('An unexpected error occurred initializing Firebase. Please refresh the page.');
       }
     };
 
-    initFirebase();
+    // Wait for auth state to be ready before initializing storage
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is authenticated, now initialize Firebase storage
+        initFirebase();
+      } else {
+        // User is not authenticated, reset initialization
+        setInitialized(false);
+      }
+    });
+
+    return unsubscribe;
   }, [posthog]);
 
   // Create save function with error handling

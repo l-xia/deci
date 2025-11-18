@@ -9,12 +9,12 @@ import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import AuthForm from './components/AuthForm';
-import { useApp } from './context';
+import { AppProvider, useApp } from './context';
 import { useAuth } from './context/AuthContext';
 import { CATEGORIES } from './constants';
 import deciLogo from './assets/deci_logo.svg';
 
-function App() {
+function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
   const {
     // Firebase
@@ -38,11 +38,6 @@ function App() {
     // PostHog
     posthog,
   } = useApp();
-
-  // Show auth form if not logged in
-  if (!currentUser) {
-    return <AuthForm />;
-  }
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -200,6 +195,22 @@ function App() {
         )}
       </div>
     </DragDropContext>
+  );
+}
+
+function App() {
+  const { currentUser } = useAuth();
+
+  // Show auth form if not logged in
+  if (!currentUser) {
+    return <AuthForm />;
+  }
+
+  // Wrap authenticated app with AppProvider
+  return (
+    <AppProvider>
+      <AuthenticatedApp />
+    </AppProvider>
   );
 }
 

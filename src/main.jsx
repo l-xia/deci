@@ -4,7 +4,6 @@ import './index.css'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { PostHogProvider } from 'posthog-js/react'
-import { AppProvider } from './context'
 import { AuthProvider } from './context/AuthContext'
 
 const posthogOptions = {
@@ -29,9 +28,7 @@ createRoot(document.getElementById('root')).render(
     >
       <ErrorBoundary>
         <AuthProvider>
-          <AppProvider>
-            <App />
-          </AppProvider>
+          <App />
         </AuthProvider>
       </ErrorBoundary>
     </PostHogProvider>

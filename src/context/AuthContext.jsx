@@ -22,6 +22,31 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Helper to format Firebase errors
+  const formatFirebaseError = (err) => {
+    console.error('Firebase Auth Error:', err);
+
+    // Network-related errors
+    if (err.code === 'auth/network-request-failed') {
+      return 'Network error. Please check your internet connection and try again.';
+    }
+
+    // Common auth errors
+    const errorMessages = {
+      'auth/invalid-email': 'Invalid email address.',
+      'auth/user-disabled': 'This account has been disabled.',
+      'auth/user-not-found': 'No account found with this email.',
+      'auth/wrong-password': 'Incorrect password.',
+      'auth/email-already-in-use': 'An account already exists with this email.',
+      'auth/weak-password': 'Password should be at least 6 characters.',
+      'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
+      'auth/operation-not-allowed': 'Email/password accounts are not enabled. Please contact support.',
+      'auth/internal-error': 'An internal error occurred. Please try again.',
+    };
+
+    return errorMessages[err.code] || err.message || 'An error occurred during authentication.';
+  };
+
   // Sign up with email and password
   const signup = async (email, password) => {
     try {
@@ -29,7 +54,8 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       return userCredential.user;
     } catch (err) {
-      setError(err.message);
+      const formattedError = formatFirebaseError(err);
+      setError(formattedError);
       throw err;
     }
   };
@@ -41,7 +67,8 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return userCredential.user;
     } catch (err) {
-      setError(err.message);
+      const formattedError = formatFirebaseError(err);
+      setError(formattedError);
       throw err;
     }
   };

@@ -19,6 +19,7 @@ const INITIAL_CARDS_STATE = {
 
 export function AppProvider({ children }) {
   const posthog = usePostHog();
+  const [hasLoadedOnce, setHasLoadedOnce] = React.useState(false);
 
   // Initialize Firebase and get save functions
   const firebase = useFirebase(posthog);
@@ -37,22 +38,33 @@ export function AppProvider({ children }) {
     posthog
   );
 
-  // Load data when Firebase is initialized
+  // Load data when Firebase is initialized (only once)
   useEffect(() => {
-    if (firebase.initialized) {
+    if (firebase.initialized && !hasLoadedOnce) {
       const loadInitialData = async () => {
         const { cards, dailyDeck, templates, hasData } = await firebase.loadData();
 
-        if (cards) cardsHook.setCards(cards);
-        if (dailyDeck) dailyDeckHook.setDailyDeck(dailyDeck);
-        if (templates) templatesHook.setTemplates(templates);
+        if (cards) {
+          cardsHook.setCards(cards);
+        }
+
+        if (dailyDeck) {
+          dailyDeckHook.setDailyDeck(dailyDeck);
+        }
+
+        if (templates) {
+          templatesHook.setTemplates(templates);
+        }
+
+        // Mark as loaded to enable auto-save
+        setHasLoadedOnce(true);
 
         // Track app loaded event
         posthog.capture('app_loaded', {
           storage_type: 'firebase',
           user_id: firebase.getUserId(),
           has_saved_data: hasData,
-          total_cards: cardsHook.getTotalCardCount(),
+          total_cards: cards ? Object.values(cards).flat().length : 0,
           daily_deck_size: dailyDeck?.length || 0,
           templates_count: templates?.length || 0,
           offline_persistence_enabled: firebase.offlinePersistenceEnabled,
@@ -64,29 +76,29 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebase.initialized]);
 
-  // Auto-save cards when they change
+  // Auto-save cards when they change (only after initial load completes)
   useEffect(() => {
-    if (firebase.initialized) {
+    if (firebase.initialized && hasLoadedOnce) {
       firebase.debouncedSaveCards(cardsHook.cards);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardsHook.cards, firebase.initialized]);
+  }, [cardsHook.cards, firebase.initialized, hasLoadedOnce]);
 
-  // Auto-save daily deck when it changes
+  // Auto-save daily deck when it changes (only after initial load completes)
   useEffect(() => {
-    if (firebase.initialized) {
+    if (firebase.initialized && hasLoadedOnce) {
       firebase.debouncedSaveDailyDeck(dailyDeckHook.dailyDeck);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyDeckHook.dailyDeck, firebase.initialized]);
+  }, [dailyDeckHook.dailyDeck, firebase.initialized, hasLoadedOnce]);
 
-  // Auto-save templates when they change
+  // Auto-save templates when they change (only after initial load completes)
   useEffect(() => {
-    if (firebase.initialized) {
+    if (firebase.initialized && hasLoadedOnce) {
       firebase.debouncedSaveTemplates(templatesHook.templates);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templatesHook.templates, firebase.initialized]);
+  }, [templatesHook.templates, firebase.initialized, hasLoadedOnce]);
 
   const value = {
     // Firebase

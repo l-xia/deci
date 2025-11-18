@@ -34,6 +34,17 @@ class FirebaseStorageManager {
    */
   async initialize() {
     try {
+      // Wait for auth state to be ready first
+      const user = auth.currentUser;
+      if (!user) {
+        throw new FirebaseStorageError(
+          'No authenticated user found',
+          'NOT_AUTHENTICATED'
+        );
+      }
+
+      this.userId = user.uid;
+
       // Enable offline persistence (only call once)
       if (!this.offlinePersistenceEnabled) {
         try {
@@ -43,33 +54,29 @@ class FirebaseStorageManager {
         } catch (err) {
           if (err.code === 'failed-precondition') {
             // Multiple tabs open, persistence can only be enabled in one tab at a time
-            console.warn('Offline persistence failed: Multiple tabs open');
+            console.warn('Offline persistence failed: Multiple tabs open, will use memory cache');
           } else if (err.code === 'unimplemented') {
             // The current browser doesn't support persistence
-            console.warn('Offline persistence not supported by this browser');
+            console.warn('Offline persistence not supported by this browser, will use memory cache');
           } else {
             console.error('Error enabling offline persistence:', err);
           }
+          // Continue initialization even if offline persistence fails
         }
       }
 
-      // Wait for auth state to be ready
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error('No authenticated user found');
-      }
-
-      this.userId = user.uid;
       this.initialized = true;
       this.lastError = null;
       return true;
     } catch (error) {
       console.error('Error initializing Firebase:', error);
-      this.lastError = new FirebaseStorageError(
-        'Failed to initialize Firebase: User not authenticated',
-        'INIT_ERROR',
-        error
-      );
+      this.lastError = error instanceof FirebaseStorageError
+        ? error
+        : new FirebaseStorageError(
+            'Failed to initialize Firebase storage',
+            'INIT_ERROR',
+            error
+          );
       return false;
     }
   }
