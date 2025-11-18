@@ -119,7 +119,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
   };
 
   return (
-    <div className="bg-white rounded-md border-2 border-gray-200 p-4 shadow-lg flex flex-col h-[820px] overflow-hidden">
+    <div className="bg-white rounded-md border-2 border-gray-200 p-4 shadow-lg flex flex-col h-[calc(100vh-30em)] lg:h-[820px] overflow-hidden">
       <div className="mb-4 flex-shrink-0 flex justify-between items-start">
         <h2 className="text-2xl font-semibold text-gray-900 relative inline-block">
           <span className="relative z-10">Today</span>
@@ -167,7 +167,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 overflow-y-auto ${
+            className={`flex-1 min-h-0 overflow-y-auto ${
               snapshot.isDraggingOver ? 'bg-blue-50 rounded-md' : ''
             }`}
           >

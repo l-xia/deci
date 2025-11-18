@@ -7,7 +7,7 @@ function CardStack({ droppableId, title, cards, color, onAddCard, onEditCard, on
   const colors = getCategoryColors(droppableId);
 
   return (
-    <div className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-full max-h-[400px]`}>
+    <div className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-[300px] md:h-full md:max-h-[400px]`}>
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900 relative inline-block">
           <span className="relative z-10">{title}</span>

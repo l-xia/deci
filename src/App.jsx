@@ -146,9 +146,9 @@ function AuthenticatedApp() {
           </header>
 
           {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
             {/* Category Stacks - Left Side */}
-            <div className="lg:col-span-8 flex flex-col h-full">
+            <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
               {/* Mobile: Horizontal scroll, Desktop: 2x2 grid */}
               <div className="md:grid md:grid-cols-2 md:auto-rows-min md:gap-4 flex md:flex-none overflow-x-auto md:overflow-x-visible gap-4 md:gap-0 pb-4 md:pb-0 snap-x snap-mandatory md:snap-none">
                 {Object.entries(CATEGORIES).map(([key, category]) => {
@@ -171,7 +171,7 @@ function AuthenticatedApp() {
             </div>
 
             {/* Daily Deck - Right Side */}
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">
               <DailyDeck
                 cards={dailyDeck}
                 categories={CATEGORIES}
