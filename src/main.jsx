@@ -5,6 +5,7 @@ import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { PostHogProvider } from 'posthog-js/react'
 import { AppProvider } from './context'
+import { AuthProvider } from './context/AuthContext'
 
 const posthogOptions = {
   person_profiles: 'identified_only',
@@ -27,9 +28,11 @@ createRoot(document.getElementById('root')).render(
       options={posthogOptions}
     >
       <ErrorBoundary>
-        <AppProvider>
-          <App />
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            <App />
+          </AppProvider>
+        </AuthProvider>
       </ErrorBoundary>
     </PostHogProvider>
   </StrictMode>,

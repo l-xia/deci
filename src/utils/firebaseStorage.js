@@ -5,7 +5,6 @@
 
 import { doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { signInAnonymously } from 'firebase/auth';
 import { validateLoadedData } from './validators';
 
 // Error types for better error handling
@@ -31,7 +30,7 @@ class FirebaseStorageManager {
   }
 
   /**
-   * Initialize Firebase auth and get/create user with offline persistence
+   * Initialize Firebase with the authenticated user's ID
    */
   async initialize() {
     try {
@@ -54,16 +53,20 @@ class FirebaseStorageManager {
         }
       }
 
-      // Sign in anonymously to get a user ID
-      const userCredential = await signInAnonymously(auth);
-      this.userId = userCredential.user.uid;
+      // Wait for auth state to be ready
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+
+      this.userId = user.uid;
       this.initialized = true;
       this.lastError = null;
       return true;
     } catch (error) {
       console.error('Error initializing Firebase:', error);
       this.lastError = new FirebaseStorageError(
-        'Failed to initialize Firebase authentication',
+        'Failed to initialize Firebase: User not authenticated',
         'INIT_ERROR',
         error
       );
