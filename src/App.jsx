@@ -146,7 +146,7 @@ function AuthenticatedApp() {
           </header>
 
           {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
+          <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
             {/* Category Stacks - Left Side */}
             <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
               {/* Mobile: Horizontal scroll, Desktop: 2x2 grid */}
@@ -170,7 +170,7 @@ function AuthenticatedApp() {
               </div>
             </div>
 
-            {/* Daily Deck - Right Side */}
+            {/* Daily Deck - Right Side (Desktop) / Bottom (Mobile) */}
             <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">
               <DailyDeck
                 cards={dailyDeck}
