@@ -25,3 +25,10 @@ dist-ssr
 
 # Vercel
 .vercel
+
+# Firebase
+.firebase
+firebase-debug.log
+firestore-debug.log
+
+.env

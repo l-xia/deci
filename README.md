@@ -6,98 +6,157 @@ A personal productivity app that helps you organize and prioritize your daily ta
 
 - **Card Organization**: Organize tasks into four categories - Structure, Upkeep, Play, and Default
 - **Daily Deck**: Drag and drop cards to build your daily task deck
-- **Templates**: Save and load daily deck templates
-- **File Storage**: Auto-save your data to your local computer drive (Chrome/Edge) or use localStorage fallback
+- **Templates**: Save and load daily deck templates for recurring schedules
+- **Cloud Sync**: Automatic cloud storage with Firebase
 - **Recurrence Types**: One-time, limited, or always-available tasks
-- **Timer**: Built-in timer for focused work sessions
+- **Anonymous Auth**: Your data is private and synced across devices
+- **Analytics**: PostHog integration for usage insights
 
-## Storage Options
+## Tech Stack
 
-The app supports multiple storage methods:
-
-1. **File System Access API** (Chrome/Edge): Auto-saves to a file on your computer
-   - Click "Set Save Location" to choose where to save your data
-   - Data automatically syncs to the file as you work
-
-2. **localStorage** (All browsers): Automatic fallback for browsers without File System API support
-
-3. **Manual Export/Import**: Works in all browsers
-   - Click "Export" to download your data as a JSON file
-   - Click "Import" to load data from a previously exported file
+- **React** - UI framework
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling
+- **@hello-pangea/dnd** - Drag and drop functionality
+- **Firebase** - Authentication and Firestore database
+- **PostHog** - Product analytics
 
 ## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- Firebase project (for database)
+- PostHog account (for analytics, optional)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd card-deck-app
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+
+   Create a `.env` file in the root directory:
+   ```env
+   # PostHog Analytics
+   VITE_PUBLIC_POSTHOG_KEY=your-posthog-key
+   VITE_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+
+   # Firebase Configuration
+   VITE_FIREBASE_API_KEY=your-api-key
+   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your-project-id
+   VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+   VITE_FIREBASE_APP_ID=your-app-id
+   ```
+
+4. **Set up Firebase**
+
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Create a new project or use existing
+   - Enable **Anonymous Authentication**:
+     - Go to Authentication > Sign-in method
+     - Enable Anonymous provider
+   - Create a **Firestore Database**:
+     - Go to Firestore Database
+     - Create database in production mode
+   - Deploy security rules (see `firestore.rules`)
 
 ### Development
 
 ```bash
-# Install dependencies
-npm install
-
 # Start development server
 npm run dev
 
 # Build for production
 npm run build
+
+# Preview production build
+npm run preview
 ```
 
-### Deployment to Vercel
+## Deployment
 
-1. **Install Vercel CLI** (if not already installed):
+### Deploy to Firebase Hosting
+
+1. **Login to Firebase**
    ```bash
-   npm install -g vercel
+   npx firebase login
    ```
 
-2. **Initialize Git** (if not already a repository):
+2. **Deploy**
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
+   # Deploy hosting only
+   npm run deploy
+
+   # Deploy everything (hosting + Firestore rules)
+   npm run deploy:all
    ```
 
-3. **Deploy to Vercel**:
-   ```bash
-   vercel
+3. **Your app will be live at:**
    ```
-   - Follow the prompts to link or create a new project
-   - Vercel will automatically detect the Vite configuration
-
-4. **For production deployment**:
-   ```bash
-   vercel --prod
+   https://your-project-id.web.app
    ```
 
-### Alternative Deployment Methods
+### Firestore Security Rules
 
-#### Using Vercel Dashboard
+The app uses the following security rules (in `firestore.rules`):
 
-1. Push your code to GitHub, GitLab, or Bitbucket
-2. Go to [vercel.com](https://vercel.com)
-3. Click "Import Project"
-4. Select your repository
-5. Vercel will auto-detect Vite and deploy
+```
+rules_version = '2';
 
-#### Using GitHub Integration
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
 
-1. Create a GitHub repository
-2. Push your code:
-   ```bash
-   git remote add origin <your-repo-url>
-   git push -u origin main
-   ```
-3. Connect the repository to Vercel for automatic deployments on every push
+This ensures users can only access their own data.
 
-## Tech Stack
+## Project Structure
 
-- **React** - UI framework
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **@hello-pangea/dnd** - Drag and drop functionality
-- **File System Access API** - Local file storage
+```
+src/
+├── components/          # React components
+│   ├── Card.jsx        # Individual card component
+│   ├── CardModal.jsx   # Card creation/edit modal
+│   ├── CardStack.jsx   # Category stack container
+│   └── DailyDeck.jsx   # Daily deck panel
+├── utils/
+│   ├── firebaseStorage.js  # Firebase data persistence
+│   └── debounce.js         # Debounce utility
+├── firebase.js         # Firebase configuration
+├── App.jsx            # Main application
+└── main.jsx           # Application entry point
+```
+
+## PostHog Events
+
+The app tracks the following events for analytics:
+
+- `app_loaded` - When the app initializes
+- `card_created` - When a user creates a new card
+- `data_exported` - When user exports data
+- `data_imported` - When user imports data
 
 ## Browser Compatibility
 
-- **Full features** (File System API): Chrome 86+, Edge 86+
-- **Basic features** (localStorage): All modern browsers
+- Chrome 90+
+- Edge 90+
+- Firefox 88+
+- Safari 14+
 
 ## License
 
