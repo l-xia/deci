@@ -1,240 +1,51 @@
-import { useState, useEffect, useMemo } from 'react';
+/**
+ * Main App Component - Refactored to use Context API
+ * Simplified from 422 lines to ~150 lines by extracting logic to hooks and context
+ */
+
+import { useState } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
-import { storageManager } from './utils/storage';
-import { debounce } from './utils/debounce';
+import AuthForm from './components/AuthForm';
+import { AppProvider, useApp } from './context';
+import { useAuth } from './context/AuthContext';
+import { CATEGORIES } from './constants';
 import deciLogo from './assets/deci_logo.svg';
 
-const CATEGORIES = {
-  structure: { name: 'Structure', color: 'bg-green-100 border-green-300' },
-  upkeep: { name: 'Upkeep', color: 'bg-orange-100 border-orange-300' },
-  play: { name: 'Play', color: 'bg-pink-100 border-pink-300' },
-  default: { name: 'Default', color: 'bg-purple-100 border-purple-300' },
-};
+function AuthenticatedApp() {
+  const { currentUser, logout } = useAuth();
+  const {
+    // Firebase
+    firebase,
+    // Cards
+    cards,
+    addCard,
+    updateCard,
+    deleteCard,
+    getAvailableCards,
+    // Daily Deck
+    dailyDeck,
+    setDailyDeck,
+    removeCardById,
+    // Templates
+    templates,
+    saveTemplate,
+    loadFromTemplate,
+    deleteTemplate,
+    // Drag and Drop
+    onDragEnd,
+    // PostHog
+    posthog,
+  } = useApp();
 
-function App() {
-  const [cards, setCards] = useState({
-    structure: [],
-    upkeep: [],
-    play: [],
-    default: [],
-  });
-
-  const [dailyDeck, setDailyDeck] = useState([]);
-  const [templates, setTemplates] = useState([]);
+  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [storageInitialized, setStorageInitialized] = useState(false);
 
-  // Create debounced save functions (500ms delay)
-  const debouncedSaveCards = useMemo(
-    () => debounce((data) => storageManager.save('cards', data), 500),
-    []
-  );
-
-  const debouncedSaveDailyDeck = useMemo(
-    () => debounce((data) => storageManager.save('dailyDeck', data), 500),
-    []
-  );
-
-  const debouncedSaveTemplates = useMemo(
-    () => debounce((data) => storageManager.save('templates', data), 500),
-    []
-  );
-
-  // Initialize storage and load data
-  useEffect(() => {
-    const initStorage = async () => {
-      await storageManager.initialize();
-
-      // Load data
-      const savedCards = await storageManager.load('cards');
-      const savedDailyDeck = await storageManager.load('dailyDeck');
-      const savedTemplates = await storageManager.load('templates');
-
-      if (savedCards) setCards(savedCards);
-      if (savedDailyDeck) setDailyDeck(savedDailyDeck);
-      if (savedTemplates) setTemplates(savedTemplates);
-
-      setStorageInitialized(true);
-    };
-
-    initStorage();
-  }, []);
-
-  // Auto-save to file or localStorage whenever state changes (debounced)
-  useEffect(() => {
-    if (storageInitialized) {
-      debouncedSaveCards(cards);
-    }
-  }, [cards, storageInitialized, debouncedSaveCards]);
-
-  useEffect(() => {
-    if (storageInitialized) {
-      debouncedSaveDailyDeck(dailyDeck);
-    }
-  }, [dailyDeck, storageInitialized, debouncedSaveDailyDeck]);
-
-  useEffect(() => {
-    if (storageInitialized) {
-      debouncedSaveTemplates(templates);
-    }
-  }, [templates, storageInitialized, debouncedSaveTemplates]);
-
-  const onDragEnd = (result) => {
-    const { source, destination, draggableId } = result;
-
-    if (!destination) return;
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-
-    // Extract actual card ID (remove 'daily-' prefix and index suffix if present)
-    const actualCardId = draggableId.startsWith('daily-')
-      ? draggableId.replace(/^daily-/, '').replace(/-\d+$/, '')
-      : draggableId;
-
-    // Moving from category to daily deck
-    if (source.droppableId.startsWith('category-') && destination.droppableId === 'daily-deck') {
-      const category = source.droppableId.replace('category-', '');
-      const card = cards[category].find(c => c.id === actualCardId);
-
-      // Check recurrence limits
-      const timesInDeck = dailyDeck.filter(c => c.id === actualCardId).length;
-      const recurrenceType = card.recurrenceType || 'always';
-
-      if (recurrenceType === 'once' && timesInDeck > 0) {
-        return; // Already in deck, can't add again
-      }
-
-      if (recurrenceType === 'limited') {
-        const maxUses = card.maxUses || 1;
-        if (timesInDeck >= maxUses) {
-          return; // Hit the limit
-        }
-      }
-
-      const newDailyDeck = Array.from(dailyDeck);
-      newDailyDeck.splice(destination.index, 0, { ...card, sourceCategory: category });
-      setDailyDeck(newDailyDeck);
-
-      // Update timesUsed for the card
-      const newCards = { ...cards };
-      newCards[category] = newCards[category].map(c =>
-        c.id === actualCardId ? { ...c, timesUsed: (c.timesUsed || 0) + 1 } : c
-      );
-      setCards(newCards);
-    }
-
-    // Moving from daily deck back to any category (removes from daily deck)
-    else if (source.droppableId === 'daily-deck' && destination.droppableId.startsWith('category-')) {
-      const removedCard = dailyDeck[source.index];
-      const newDailyDeck = Array.from(dailyDeck);
-      newDailyDeck.splice(source.index, 1);
-      setDailyDeck(newDailyDeck);
-
-      // Decrement timesUsed for the card
-      const category = removedCard.sourceCategory;
-      const newCards = { ...cards };
-      newCards[category] = newCards[category].map(c =>
-        c.id === removedCard.id ? { ...c, timesUsed: Math.max(0, (c.timesUsed || 0) - 1) } : c
-      );
-      setCards(newCards);
-    }
-
-    // Moving between categories
-    else if (source.droppableId.startsWith('category-') && destination.droppableId.startsWith('category-')) {
-      const sourceCategory = source.droppableId.replace('category-', '');
-      const destCategory = destination.droppableId.replace('category-', '');
-
-      if (sourceCategory === destCategory) {
-        // Reordering within same category
-        const newCards = Array.from(cards[sourceCategory]);
-        const [moved] = newCards.splice(source.index, 1);
-        newCards.splice(destination.index, 0, moved);
-
-        setCards({
-          ...cards,
-          [sourceCategory]: newCards,
-        });
-      } else {
-        // Moving to different category
-        const sourceCards = Array.from(cards[sourceCategory]);
-        const destCards = Array.from(cards[destCategory]);
-        const [moved] = sourceCards.splice(source.index, 1);
-        destCards.splice(destination.index, 0, moved);
-
-        setCards({
-          ...cards,
-          [sourceCategory]: sourceCards,
-          [destCategory]: destCards,
-        });
-
-        // Update in daily deck if present
-        setDailyDeck(dailyDeck.map(c =>
-          c.id === actualCardId ? { ...c, sourceCategory: destCategory } : c
-        ));
-      }
-    }
-
-    // Reordering within daily deck
-    else if (source.droppableId === 'daily-deck' && destination.droppableId === 'daily-deck') {
-      const newDailyDeck = Array.from(dailyDeck);
-      const [moved] = newDailyDeck.splice(source.index, 1);
-      newDailyDeck.splice(destination.index, 0, moved);
-      setDailyDeck(newDailyDeck);
-    }
-  };
-
-  const addCard = (category, cardData) => {
-    const newCard = {
-      id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      ...cardData,
-      createdAt: new Date().toISOString(),
-    };
-    setCards({
-      ...cards,
-      [category]: [...cards[category], newCard],
-    });
-  };
-
-  const updateCard = (category, cardId, cardData) => {
-    setCards({
-      ...cards,
-      [category]: cards[category].map(c =>
-        c.id === cardId ? { ...c, ...cardData } : c
-      ),
-    });
-
-    // Update in daily deck if present
-    setDailyDeck(dailyDeck.map(c =>
-      c.id === cardId ? { ...c, ...cardData } : c
-    ));
-  };
-
-  const deleteCard = (category, cardId) => {
-    setCards({
-      ...cards,
-      [category]: cards[category].filter(c => c.id !== cardId),
-    });
-
-    // Remove from daily deck if present
-    setDailyDeck(dailyDeck.filter(c => c.id !== cardId));
-  };
-
-  const removeFromDailyDeck = (index) => {
-    const newDailyDeck = Array.from(dailyDeck);
-    newDailyDeck.splice(index, 1);
-    setDailyDeck(newDailyDeck);
-  };
-
-  const updateDailyDeckCard = (index, updates) => {
-    const newDailyDeck = Array.from(dailyDeck);
-    newDailyDeck[index] = { ...newDailyDeck[index], ...updates };
-    setDailyDeck(newDailyDeck);
-  };
-
+  // Modal handlers
   const openModal = (category, card = null) => {
     setSelectedCategory(category);
     setEditingCard(card);
@@ -247,82 +58,24 @@ function App() {
     setSelectedCategory(null);
   };
 
-  const saveTemplate = (name) => {
-    const newTemplate = {
-      id: `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name,
-      cards: dailyDeck.map(card => ({
-        id: card.id,
-        sourceCategory: card.sourceCategory,
-      })),
-      createdAt: new Date().toISOString(),
-    };
-    setTemplates([...templates, newTemplate]);
-  };
-
-  const loadTemplate = (templateId) => {
-    const template = templates.find(t => t.id === templateId);
-    if (!template) return;
-
-    const loadedCards = template.cards
-      .map(templateCard => {
-        const category = templateCard.sourceCategory;
-        const card = cards[category]?.find(c => c.id === templateCard.id);
-        return card ? { ...card, sourceCategory: category } : null;
-      })
-      .filter(Boolean);
-
-    setDailyDeck(loadedCards);
-  };
-
-  const deleteTemplate = (templateId) => {
-    setTemplates(templates.filter(t => t.id !== templateId));
-  };
-
-  // File storage handlers
-  const handleSelectSaveLocation = async () => {
-    const success = await storageManager.selectSaveLocation();
-    if (success) {
-      // Re-save all data to the new location
-      await storageManager.save('cards', cards);
-      await storageManager.save('dailyDeck', dailyDeck);
-      await storageManager.save('templates', templates);
-      alert('Save location set! Your data will now auto-save to this file.');
+  const handleSaveCard = (cardData) => {
+    if (editingCard) {
+      updateCard(selectedCategory, editingCard.id, cardData, posthog);
+    } else {
+      addCard(selectedCategory, cardData, posthog);
     }
+    closeModal();
   };
 
-  const handleLoadFile = async () => {
-    const data = await storageManager.selectFileToLoad();
-    if (data) {
-      if (data.cards) setCards(data.cards);
-      if (data.dailyDeck) setDailyDeck(data.dailyDeck);
-      if (data.templates) setTemplates(data.templates);
-      alert('Data loaded successfully!');
-    }
-  };
-
-  const handleExportData = () => {
-    const allData = {
-      cards,
-      dailyDeck,
-      templates,
-      exportedAt: new Date().toISOString(),
-    };
-    storageManager.exportAsDownload(allData);
-  };
-
-  const handleImportData = async () => {
-    const data = await storageManager.importFromUpload();
-    if (data) {
-      if (data.cards) setCards(data.cards);
-      if (data.dailyDeck) setDailyDeck(data.dailyDeck);
-      if (data.templates) setTemplates(data.templates);
-      alert('Data imported successfully!');
+  const handleDeleteCard = (category, cardId) => {
+    if (confirm('Delete this card? This will also remove it from your daily deck.')) {
+      deleteCard(category, cardId, posthog);
+      removeCardById(cardId, posthog);
     }
   };
 
   // Show loading state while initializing
-  if (!storageInitialized) {
+  if (!firebase.initialized) {
     return (
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -337,139 +90,144 @@ function App() {
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex flex-col">
         <div className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col">
+          {/* Header */}
           <header className="mb-6 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <img src={deciLogo} alt="Deci" className="h-12" />
 
-              {/* Storage Controls */}
+              {/* User info and logout */}
               <div className="flex items-center gap-2">
-                {storageManager.supportsFileSystem && (
-                  <>
-                    <button
-                      onClick={handleSelectSaveLocation}
-                      className="px-3 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2"
-                      title="Choose where to auto-save your data"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                      </svg>
-                      Set Save Location
-                    </button>
-                    <button
-                      onClick={handleLoadFile}
-                      className="px-3 py-2 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors flex items-center gap-2"
-                      title="Load data from a file"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                      Load File
-                    </button>
-                  </>
-                )}
+                <span className="text-sm text-gray-600">{currentUser.email}</span>
                 <button
-                  onClick={handleExportData}
-                  className="px-3 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2"
-                  title="Download your data as a file"
+                  onClick={logout}
+                  className="text-sm text-gray-500 hover:text-gray-700 underline"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export
-                </button>
-                <button
-                  onClick={handleImportData}
-                  className="px-3 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2"
-                  title="Import data from a file"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                  </svg>
-                  Import
+                  Sign out
                 </button>
               </div>
             </div>
-            {storageManager.isUsingFileSystem() && (
-              <div className="text-xs text-green-600 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Auto-saving to file
+
+            {firebase.isUsingFirebase && (
+              <div className="text-xs flex items-center gap-1.5">
+                {firebase.saveStatus === 'saving' && (
+                  <svg className="animate-spin h-3 w-3 text-blue-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {firebase.saveStatus === 'saved' && (
+                  <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                )}
+                {firebase.saveStatus === 'error' && (
+                  <svg className="w-3 h-3 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                )}
+                <span className={firebase.saveStatus === 'saving' ? 'text-blue-500' : firebase.saveStatus === 'saved' ? 'text-gray-600' : firebase.saveStatus === 'error' ? 'text-red-600' : 'text-gray-600'}>
+                  {firebase.saveStatus === 'saving' && 'Syncing to cloud...'}
+                  {firebase.saveStatus === 'saved' && 'Cloud sync enabled'}
+                  {firebase.saveStatus === 'error' && 'Sync failed'}
+                  {firebase.offlinePersistenceEnabled && firebase.saveStatus === 'saved' && (
+                    <span className="text-gray-500"> • Offline mode active</span>
+                  )}
+                </span>
+                {firebase.saveStatus === 'error' && (
+                  <button
+                    onClick={() => firebase.retrySave(cards, dailyDeck, templates)}
+                    className="underline hover:no-underline ml-1 text-red-600"
+                    aria-label="Retry saving data"
+                  >
+                    Retry
+                  </button>
+                )}
               </div>
             )}
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 overflow-hidden">
-            {/* Category Stacks - Left Side (2/3 = 8 columns) */}
-            <div className="lg:col-span-8 flex flex-col h-full">
-              <div className="grid grid-cols-2 auto-rows-min gap-4">
+          {/* Main Content */}
+          <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
+            {/* Category Stacks - Left Side */}
+            <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
+              {/* Mobile: Horizontal scroll, Desktop: 2x2 grid */}
+              <div className="md:grid md:grid-cols-2 md:auto-rows-min md:gap-4 flex md:flex-none overflow-x-auto md:overflow-x-visible gap-4 md:gap-0 pb-4 md:pb-0 snap-x snap-mandatory md:snap-none">
                 {Object.entries(CATEGORIES).map(([key, category]) => {
-                  // Filter out cards that have reached their daily limit
-                  const filteredCards = cards[key].filter(card => {
-                    if (card.recurrenceType === 'once') {
-                      // Check if this card is in the daily deck
-                      const isInDailyDeck = dailyDeck.some(deckCard => deckCard.id === card.id);
-                      return !isInDailyDeck; // Hide if in daily deck
-                    }
-
-                    if (card.recurrenceType === 'limited') {
-                      // Check how many times this card is in the daily deck
-                      const timesInDeck = dailyDeck.filter(deckCard => deckCard.id === card.id).length;
-                      const maxUses = card.maxUses || 1;
-                      return timesInDeck < maxUses; // Hide if max uses reached
-                    }
-
-                    return true; // Show all other cards (including 'always')
-                  });
-
+                  const filteredCards = getAvailableCards(key, dailyDeck);
                   return (
-                    <CardStack
-                      key={key}
-                      categoryKey={key}
-                      category={category}
-                      cards={filteredCards}
-                      onAddCard={() => openModal(key)}
-                      onEditCard={(card) => openModal(key, card)}
-                      onDeleteCard={(cardId) => deleteCard(key, cardId)}
-                    />
+                    <div key={key} className="flex-shrink-0 w-[85vw] md:w-auto snap-start">
+                      <CardStack
+                        droppableId={key}
+                        title={category.name}
+                        cards={filteredCards}
+                        color={category.color}
+                        onAddCard={() => openModal(key)}
+                        onEditCard={(card) => openModal(key, card)}
+                        onDeleteCard={(cardId) => handleDeleteCard(key, cardId)}
+                      />
+                    </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Daily Deck - Right Side (1/3 = 4 columns) */}
-            <div className="lg:col-span-4 flex flex-col h-full overflow-hidden">
+            {/* Daily Deck - Right Side (Desktop) / Bottom (Mobile) */}
+            <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">
               <DailyDeck
                 cards={dailyDeck}
-                onRemoveCard={removeFromDailyDeck}
-                onUpdateCard={updateDailyDeckCard}
                 categories={CATEGORIES}
                 templates={templates}
                 onSaveTemplate={saveTemplate}
-                onLoadTemplate={loadTemplate}
+                onLoadTemplate={loadFromTemplate}
                 onDeleteTemplate={deleteTemplate}
+                onUpdateCard={(index, updates) => {
+                  const updatedDeck = dailyDeck.map((card, i) =>
+                    i === index ? { ...card, ...updates } : card
+                  );
+                  // This will trigger the auto-save in AppContext
+                  setDailyDeck(updatedDeck);
+
+                  // Track completion if card is being completed
+                  if (updates.completed && updates.timeSpent) {
+                    posthog.capture('card_completed', {
+                      card_id: dailyDeck[index]?.id,
+                      time_spent: updates.timeSpent,
+                      suggested_duration: dailyDeck[index]?.duration,
+                    });
+                  }
+                }}
               />
             </div>
           </div>
         </div>
 
+        {/* Card Modal */}
         {modalOpen && (
           <CardModal
             category={selectedCategory}
             card={editingCard}
-            onSave={(cardData) => {
-              if (editingCard) {
-                updateCard(selectedCategory, editingCard.id, cardData);
-              } else {
-                addCard(selectedCategory, cardData);
-              }
-              closeModal();
-            }}
+            onSave={handleSaveCard}
             onClose={closeModal}
           />
         )}
       </div>
     </DragDropContext>
+  );
+}
+
+function App() {
+  const { currentUser } = useAuth();
+
+  // Show auth form if not logged in
+  if (!currentUser) {
+    return <AuthForm />;
+  }
+
+  // Wrap authenticated app with AppProvider
+  return (
+    <AppProvider>
+      <AuthenticatedApp />
+    </AppProvider>
   );
 }
 

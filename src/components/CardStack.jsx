@@ -1,21 +1,16 @@
 import { Droppable } from '@hello-pangea/dnd';
 import Card from './Card';
+import { getCategoryColors } from '../constants';
 
-function CardStack({ categoryKey, category, cards, onAddCard, onEditCard, onDeleteCard }) {
-  // Map category to border and highlight colors
-  const categoryColors = {
-    structure: { border: 'border-green-300', highlight: 'bg-green-300' },
-    upkeep: { border: 'border-orange-300', highlight: 'bg-orange-300' },
-    play: { border: 'border-pink-300', highlight: 'bg-pink-300' },
-    default: { border: 'border-purple-300', highlight: 'bg-purple-300' },
-  };
-  const colors = categoryColors[categoryKey] || categoryColors.default;
+function CardStack({ droppableId, title, cards, color, onAddCard, onEditCard, onDeleteCard }) {
+  // Get colors from the new constants system
+  const colors = getCategoryColors(droppableId);
 
   return (
-    <div className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-full max-h-[400px]`}>
+    <div className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-[300px] md:h-full md:max-h-[400px]`}>
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900 relative inline-block">
-          <span className="relative z-10">{category.name}</span>
+          <span className="relative z-10">{title}</span>
           <span className={`absolute bottom-0 left-0 right-0 h-2 ${colors.highlight} opacity-50`}></span>
         </h3>
         <button
@@ -29,7 +24,7 @@ function CardStack({ categoryKey, category, cards, onAddCard, onEditCard, onDele
         </button>
       </div>
 
-      <Droppable droppableId={`category-${categoryKey}`}>
+      <Droppable droppableId={droppableId}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -53,7 +48,7 @@ function CardStack({ categoryKey, category, cards, onAddCard, onEditCard, onDele
                   onEdit={onEditCard}
                   onDelete={onDeleteCard}
                   isDailyDeck={false}
-                  categoryKey={categoryKey}
+                  categoryKey={droppableId}
                 />
               ))
             )}

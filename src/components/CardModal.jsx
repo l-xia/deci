@@ -1,4 +1,11 @@
 import { useState, useEffect } from 'react';
+import {
+  validateTitle,
+  validateDescription,
+  validateDuration,
+  validateMaxUses,
+  VALIDATION_RULES,
+} from '../utils/validators';
 
 function CardModal({ category, card, onSave, onClose }) {
   const [title, setTitle] = useState('');
@@ -6,6 +13,22 @@ function CardModal({ category, card, onSave, onClose }) {
   const [duration, setDuration] = useState('');
   const [recurrenceType, setRecurrenceType] = useState('always');
   const [maxUses, setMaxUses] = useState('');
+
+  // Validation errors
+  const [errors, setErrors] = useState({
+    title: null,
+    description: null,
+    duration: null,
+    maxUses: null,
+  });
+
+  // Touch state (to show errors only after user interacts)
+  const [touched, setTouched] = useState({
+    title: false,
+    description: false,
+    duration: false,
+    maxUses: false,
+  });
 
   useEffect(() => {
     if (card) {
@@ -17,16 +40,53 @@ function CardModal({ category, card, onSave, onClose }) {
     }
   }, [card]);
 
+  // Real-time validation
+  useEffect(() => {
+    const titleValidation = validateTitle(title);
+    const descriptionValidation = validateDescription(description);
+    const durationValidation = validateDuration(duration);
+    const maxUsesValidation = recurrenceType === 'limited' ? validateMaxUses(maxUses) : { valid: true, error: null };
+
+    setErrors({
+      title: titleValidation.error,
+      description: descriptionValidation.error,
+      duration: durationValidation.error,
+      maxUses: maxUsesValidation.error,
+    });
+  }, [title, description, duration, maxUses, recurrenceType]);
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+
+    // Mark all fields as touched
+    setTouched({
+      title: true,
+      description: true,
+      duration: true,
+      maxUses: true,
+    });
+
+    // Validate all fields
+    const titleValidation = validateTitle(title);
+    const descriptionValidation = validateDescription(description);
+    const durationValidation = validateDuration(duration);
+    const maxUsesValidation = recurrenceType === 'limited' ? validateMaxUses(maxUses) : { valid: true, error: null, value: null };
+
+    // Check if all validations passed
+    if (!titleValidation.valid || !descriptionValidation.valid || !durationValidation.valid || !maxUsesValidation.valid) {
+      return; // Don't submit if there are errors
+    }
 
     onSave({
-      title: title.trim(),
-      description: description.trim(),
-      duration: duration ? parseInt(duration) : null,
+      title: titleValidation.sanitized,
+      description: descriptionValidation.sanitized,
+      duration: durationValidation.value,
       recurrenceType,
-      maxUses: recurrenceType === 'limited' && maxUses ? parseInt(maxUses) : null,
+      maxUses: maxUsesValidation.value,
       timesUsed: card?.timesUsed || 0,
     });
   };
@@ -51,17 +111,37 @@ function CardModal({ category, card, onSave, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              Title *
+              Title <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onBlur={() => handleBlur('title')}
+              maxLength={VALIDATION_RULES.TITLE_MAX_LENGTH}
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent ${
+                touched.title && errors.title
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
               placeholder="e.g., Walk the dog"
-              required
+              aria-required="true"
+              aria-invalid={touched.title && errors.title ? 'true' : 'false'}
+              aria-describedby={touched.title && errors.title ? 'title-error' : undefined}
             />
+            <div className="flex justify-between items-center mt-1">
+              {touched.title && errors.title ? (
+                <p id="title-error" className="text-xs text-red-500" role="alert">
+                  {errors.title}
+                </p>
+              ) : (
+                <div></div>
+              )}
+              <span className="text-xs text-gray-400">
+                {title.length}/{VALIDATION_RULES.TITLE_MAX_LENGTH}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -72,10 +152,30 @@ function CardModal({ category, card, onSave, onClose }) {
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              onBlur={() => handleBlur('description')}
+              maxLength={VALIDATION_RULES.DESCRIPTION_MAX_LENGTH}
               rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent resize-none ${
+                touched.description && errors.description
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
               placeholder="Optional details..."
+              aria-invalid={touched.description && errors.description ? 'true' : 'false'}
+              aria-describedby={touched.description && errors.description ? 'description-error' : undefined}
             />
+            <div className="flex justify-between items-center mt-1">
+              {touched.description && errors.description ? (
+                <p id="description-error" className="text-xs text-red-500" role="alert">
+                  {errors.description}
+                </p>
+              ) : (
+                <div></div>
+              )}
+              <span className="text-xs text-gray-400">
+                {description.length}/{VALIDATION_RULES.DESCRIPTION_MAX_LENGTH}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -87,10 +187,27 @@ function CardModal({ category, card, onSave, onClose }) {
               id="duration"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onBlur={() => handleBlur('duration')}
+              min={VALIDATION_RULES.DURATION_MIN}
+              max={VALIDATION_RULES.DURATION_MAX}
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent ${
+                touched.duration && errors.duration
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
               placeholder="e.g., 30"
-              min="1"
+              aria-invalid={touched.duration && errors.duration ? 'true' : 'false'}
+              aria-describedby={touched.duration && errors.duration ? 'duration-error' : 'duration-help'}
             />
+            {touched.duration && errors.duration ? (
+              <p id="duration-error" className="text-xs text-red-500 mt-1" role="alert">
+                {errors.duration}
+              </p>
+            ) : (
+              <p id="duration-help" className="text-xs text-gray-500 mt-1">
+                Between {VALIDATION_RULES.DURATION_MIN} and {VALIDATION_RULES.DURATION_MAX} minutes
+              </p>
+            )}
           </div>
 
           <div>
@@ -126,15 +243,31 @@ function CardModal({ category, card, onSave, onClose }) {
                   <div className="font-medium text-sm">Limited Uses</div>
                   <div className="text-xs text-gray-500 mb-1">Can be added X times per day (e.g., Walk dog 3x)</div>
                   {recurrenceType === 'limited' && (
-                    <input
-                      type="number"
-                      value={maxUses}
-                      onChange={(e) => setMaxUses(e.target.value)}
-                      className="w-20 px-2 py-1 border border-gray-300 rounded-md text-sm"
-                      placeholder="3"
-                      min="1"
-                      required
-                    />
+                    <div className="mt-1">
+                      <input
+                        type="number"
+                        value={maxUses}
+                        onChange={(e) => setMaxUses(e.target.value)}
+                        onBlur={() => handleBlur('maxUses')}
+                        min={VALIDATION_RULES.MAX_USES_MIN}
+                        max={VALIDATION_RULES.MAX_USES_MAX}
+                        className={`w-20 px-2 py-1 border rounded-md text-sm ${
+                          touched.maxUses && errors.maxUses
+                            ? 'border-red-500'
+                            : 'border-gray-300'
+                        }`}
+                        placeholder="3"
+                        required
+                        aria-required="true"
+                        aria-invalid={touched.maxUses && errors.maxUses ? 'true' : 'false'}
+                        aria-describedby={touched.maxUses && errors.maxUses ? 'maxUses-error' : undefined}
+                      />
+                      {touched.maxUses && errors.maxUses && (
+                        <p id="maxUses-error" className="text-xs text-red-500 mt-1" role="alert">
+                          {errors.maxUses}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </label>

@@ -102,6 +102,9 @@ function DailyDeckCard({ card, index, onRemove, onUpdateCard, categories, onDoub
 function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [focusedCardIndex, setFocusedCardIndex] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
 
   // Handle escape key to exit focus mode
   useEffect(() => {
@@ -114,13 +117,70 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
     return () => window.removeEventListener('keydown', handleEscape);
   }, [focusedCardIndex]);
 
+  // Touch handlers for drawer swipe
+  const handleTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isUpSwipe = distance > 50;
+    const isDownSwipe = distance < -50;
+
+    if (isUpSwipe) {
+      setDrawerOpen(true);
+    }
+    if (isDownSwipe) {
+      setDrawerOpen(false);
+    }
+  };
+
   const handleDoubleClick = (index) => {
     setFocusedCardIndex(index);
   };
 
   return (
-    <div className="bg-white rounded-md border-2 border-gray-200 p-4 shadow-lg flex flex-col h-[820px] overflow-hidden">
-      <div className="mb-4 flex-shrink-0 flex justify-between items-start">
+    <>
+      {/* Mobile: Backdrop (only when expanded) */}
+      {drawerOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* Main container - Desktop: normal, Mobile: partial drawer that can expand */}
+      <div
+        className={`
+          bg-white rounded-md border-2 border-gray-200 shadow-lg flex flex-col overflow-hidden
+          lg:relative lg:h-[820px] lg:p-4
+          lg:static lg:translate-y-0
+          transition-all duration-300 ease-in-out
+          ${drawerOpen
+            ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none'
+            : 'relative h-full'}
+        `}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Drawer handle (mobile only) */}
+        <div
+          className="lg:hidden flex justify-center pt-2 pb-1 cursor-pointer flex-shrink-0"
+          onClick={() => setDrawerOpen(!drawerOpen)}
+        >
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+        </div>
+
+        <div className="p-4 flex flex-col flex-1 min-h-0">
+          <div className="mb-4 flex-shrink-0 flex justify-between items-start">
         <h2 className="text-2xl font-semibold text-gray-900 relative inline-block">
           <span className="relative z-10">Today</span>
           <span className="absolute bottom-0 left-0 right-0 h-2 bg-blue-300 opacity-50"></span>
@@ -167,7 +227,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 overflow-y-auto ${
+            className={`flex-1 min-h-0 overflow-y-auto ${
               snapshot.isDraggingOver ? 'bg-blue-50 rounded-md' : ''
             }`}
           >
@@ -282,7 +342,9 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
           </div>
         </div>
       )}
-    </div>
+        </div>
+      </div>
+    </>
   );
 }
 
