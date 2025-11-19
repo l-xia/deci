@@ -14,7 +14,6 @@ function CardModal({ category, card, onSave, onClose }) {
   const [recurrenceType, setRecurrenceType] = useState('always');
   const [maxUses, setMaxUses] = useState('');
 
-  // Validation errors
   const [errors, setErrors] = useState({
     title: null,
     description: null,
@@ -22,7 +21,6 @@ function CardModal({ category, card, onSave, onClose }) {
     maxUses: null,
   });
 
-  // Touch state (to show errors only after user interacts)
   const [touched, setTouched] = useState({
     title: false,
     description: false,
@@ -40,7 +38,6 @@ function CardModal({ category, card, onSave, onClose }) {
     }
   }, [card]);
 
-  // Real-time validation
   useEffect(() => {
     const titleValidation = validateTitle(title);
     const descriptionValidation = validateDescription(description);

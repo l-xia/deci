@@ -134,10 +134,7 @@ export function useFirebase(posthog) {
     if (templates) debouncedSaveTemplates(templates);
   }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]);
 
-  // Flush saves before page unload to prevent data loss on hard refresh
   const flushPendingSaves = useCallback(() => {
-    console.log('⚠️ Flushing pending saves before page unload...');
-    // Call flush if it exists (our debounce implementation has it)
     if (debouncedSaveCards?.flush) {
       debouncedSaveCards.flush();
     }

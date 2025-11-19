@@ -2,21 +2,14 @@ import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { useState, useEffect } from 'react';
 import Timer from './Timer';
 import TemplateManager from './TemplateManager';
+import { getCategoryColors } from '../constants/categories';
+import { UI_CONSTANTS } from '../constants/config';
 
-function DailyDeckCard({ card, index, onRemove, onUpdateCard, categories, onDoubleClick }) {
-  const categoryData = categories[card.sourceCategory] || { name: 'Default', color: 'bg-gray-100 border-gray-300' };
-  const borderColor = categoryData.color.split(' ')[1]; // Extract border color class
+function DailyDeckCard({ card, index, onUpdateCard, onDoubleClick }) {
+  const colors = getCategoryColors(card.sourceCategory);
+  const borderColor = colors.border;
+  const highlightColor = colors.highlight;
 
-  // Map category to highlight colors
-  const highlightColors = {
-    structure: 'bg-green-300',
-    upkeep: 'bg-orange-300',
-    play: 'bg-pink-300',
-    default: 'bg-purple-300',
-  };
-  const highlightColor = highlightColors[card.sourceCategory] || 'bg-purple-300';
-
-  // First card (index 0) shows as full square card
   const isFirstCard = index === 0;
 
   return (
@@ -106,7 +99,6 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
 
-  // Handle escape key to exit focus mode
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && focusedCardIndex !== null) {
@@ -117,7 +109,6 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
     return () => window.removeEventListener('keydown', handleEscape);
   }, [focusedCardIndex]);
 
-  // Touch handlers for drawer swipe
   const handleTouchStart = (e) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientY);
@@ -131,8 +122,8 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
     if (!touchStart || !touchEnd) return;
 
     const distance = touchStart - touchEnd;
-    const isUpSwipe = distance > 50;
-    const isDownSwipe = distance < -50;
+    const isUpSwipe = distance > UI_CONSTANTS.SWIPE_THRESHOLD;
+    const isDownSwipe = distance < -UI_CONSTANTS.SWIPE_THRESHOLD;
 
     if (isUpSwipe) {
       setDrawerOpen(true);
@@ -148,7 +139,6 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
 
   return (
     <>
-      {/* Mobile: Backdrop (only when expanded) */}
       {drawerOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
@@ -156,7 +146,6 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
         />
       )}
 
-      {/* Main container - Desktop: normal, Mobile: partial drawer that can expand */}
       <div
         className={`
           bg-white rounded-md border-2 border-gray-200 shadow-lg flex flex-col overflow-hidden
@@ -171,7 +160,6 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Drawer handle (mobile only) */}
         <div
           className="lg:hidden flex justify-center pt-2 pb-1 cursor-pointer flex-shrink-0"
           onClick={() => setDrawerOpen(!drawerOpen)}
@@ -243,9 +231,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
                   key={`${card.id}-${index}`}
                   card={card}
                   index={index}
-                  onRemove={onRemoveCard}
                   onUpdateCard={onUpdateCard}
-                  categories={categories}
                   onDoubleClick={handleDoubleClick}
                 />
               ))
@@ -255,7 +241,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
         )}
       </Droppable>
 
-      {cards.length > 0 && (
+          {cards.length > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-200 flex-shrink-0">
           <div className="text-sm text-gray-600">
             <div className="flex justify-between">
@@ -270,8 +256,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
         </div>
       )}
 
-      {/* Full-screen focus mode overlay */}
-      {focusedCardIndex !== null && cards[focusedCardIndex] && (
+          {focusedCardIndex !== null && cards[focusedCardIndex] && (
         <div
           className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-8"
           onClick={() => setFocusedCardIndex(null)}
@@ -282,19 +267,12 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
           >
             {(() => {
               const card = cards[focusedCardIndex];
-              const categoryData = categories[card.sourceCategory] || { name: 'Default', color: 'bg-gray-100 border-gray-300' };
-              const borderColor = categoryData.color.split(' ')[1];
-              const highlightColors = {
-                structure: 'bg-green-300',
-                upkeep: 'bg-orange-300',
-                play: 'bg-pink-300',
-                default: 'bg-purple-300',
-              };
-              const highlightColor = highlightColors[card.sourceCategory] || 'bg-purple-300';
+              const colors = getCategoryColors(card.sourceCategory);
+              const borderColor = colors.border;
+              const highlightColor = colors.highlight;
 
               return (
                 <>
-                  {/* Card content */}
                   <div className={`border-l-8 ${borderColor} pl-6`}>
                     <div className="flex justify-between items-start mb-6">
                       <h2 className="text-5xl font-bold text-gray-900 relative inline-block">

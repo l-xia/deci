@@ -40,12 +40,10 @@ function AuthenticatedApp() {
     posthog,
   } = useApp();
 
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  // Modal handlers
   const openModal = (category, card = null) => {
     setSelectedCategory(category);
     setEditingCard(card);
@@ -90,12 +88,10 @@ function AuthenticatedApp() {
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex flex-col">
         <div className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col">
-          {/* Header */}
           <header className="mb-6 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <img src={deciLogo} alt="Deci" className="h-12" />
 
-              {/* User info and logout */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">{currentUser.email}</span>
                 <button
@@ -146,11 +142,8 @@ function AuthenticatedApp() {
             )}
           </header>
 
-          {/* Main Content */}
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
-            {/* Category Stacks - Left Side */}
             <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
-              {/* Mobile: Horizontal scroll, Desktop: 2x2 grid */}
               <div className="md:grid md:grid-cols-2 md:auto-rows-min md:gap-4 flex md:flex-none overflow-x-auto md:overflow-x-visible gap-4 md:gap-0 pb-4 md:pb-0 snap-x snap-mandatory md:snap-none">
                 {Object.entries(CATEGORIES).map(([key, category]) => {
                   const filteredCards = getAvailableCards(key, dailyDeck);
@@ -171,7 +164,6 @@ function AuthenticatedApp() {
               </div>
             </div>
 
-            {/* Daily Deck - Right Side (Desktop) / Bottom (Mobile) */}
             <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">
               <DailyDeck
                 cards={dailyDeck}
@@ -184,10 +176,8 @@ function AuthenticatedApp() {
                   const updatedDeck = dailyDeck.map((card, i) =>
                     i === index ? { ...card, ...updates } : card
                   );
-                  // This will trigger the auto-save in AppContext
                   setDailyDeck(updatedDeck);
 
-                  // Track completion if card is being completed
                   if (updates.completed && updates.timeSpent) {
                     posthog.capture('card_completed', {
                       card_id: dailyDeck[index]?.id,
@@ -201,7 +191,6 @@ function AuthenticatedApp() {
           </div>
         </div>
 
-        {/* Card Modal */}
         {modalOpen && (
           <CardModal
             category={selectedCategory}

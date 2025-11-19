@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 
 function Timer({ card, onComplete }) {
   const [isRunning, setIsRunning] = useState(false);

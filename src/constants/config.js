@@ -36,6 +36,7 @@ export const UI_CONSTANTS = {
   MAX_UNDO_HISTORY: 20,
   TOAST_DURATION: 3000, // ms
   ANIMATION_DURATION: 200, // ms
+  SWIPE_THRESHOLD: 50, // px - minimum distance for swipe gesture
 };
 
 // Feature flags
