@@ -82,17 +82,6 @@ class FirebaseStorageManager {
   }
 
   /**
-   * Get the user's document reference path
-   */
-  getUserDocPath(key) {
-    if (!this.userId) {
-      throw new Error('Firebase not initialized. Call initialize() first.');
-    }
-    // Firestore requires even number of path segments: collection/document/collection/document
-    return `users/${this.userId}/data/${key}`;
-  }
-
-  /**
    * Retry a function with exponential backoff
    */
   async retryWithBackoff(fn, retries = this.retryAttempts) {
@@ -123,22 +112,29 @@ class FirebaseStorageManager {
     }
 
     try {
-      const docPath = this.getUserDocPath(key);
-      const docRef = doc(db, docPath);
+      // Use doc() with separate path segments instead of a string path
+      const docRef = doc(db, 'users', this.userId, 'data', key);
+
       const dataToSave = {
         data: data,
         savedAt: new Date().toISOString(),
         version: '1.0.0',
       };
 
+      console.log(`💾 Saving ${key} to Firebase...`, {
+        path: `users/${this.userId}/data/${key}`,
+        dataSize: JSON.stringify(data).length
+      });
+
       await this.retryWithBackoff(async () => {
         await setDoc(docRef, dataToSave);
       });
 
+      console.log(`✅ Successfully saved ${key} to Firebase`);
       this.lastError = null;
       return { success: true, error: null };
     } catch (error) {
-      console.error(`Error saving ${key} to Firebase:`, error);
+      console.error(`❌ Error saving ${key} to Firebase:`, error);
       const storageError = new FirebaseStorageError(
         `Failed to save ${key} after ${this.retryAttempts} attempts`,
         'SAVE_ERROR',
@@ -164,8 +160,8 @@ class FirebaseStorageManager {
     }
 
     try {
-      const docPath = this.getUserDocPath(key);
-      const docRef = doc(db, docPath);
+      // Use doc() with separate path segments instead of a string path
+      const docRef = doc(db, 'users', this.userId, 'data', key);
 
       const docSnap = await this.retryWithBackoff(async () => {
         return await getDoc(docRef);
@@ -230,8 +226,8 @@ class FirebaseStorageManager {
     }
 
     try {
-      const docPath = this.getUserDocPath(key);
-      const docRef = doc(db, docPath);
+      // Use doc() with separate path segments instead of a string path
+      const docRef = doc(db, 'users', this.userId, 'data', key);
 
       const unsubscribe = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {

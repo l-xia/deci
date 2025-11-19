@@ -79,6 +79,9 @@ export function AppProvider({ children }) {
   // Auto-save cards when they change (only after initial load completes)
   useEffect(() => {
     if (firebase.initialized && hasLoadedOnce) {
+      console.log('📝 Cards changed, scheduling save...', {
+        totalCards: Object.values(cardsHook.cards).flat().length
+      });
       firebase.debouncedSaveCards(cardsHook.cards);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,6 +102,22 @@ export function AppProvider({ children }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templatesHook.templates, firebase.initialized, hasLoadedOnce]);
+
+  // Flush pending saves before page unload to prevent data loss on hard refresh
+  useEffect(() => {
+    if (!firebase.initialized || !hasLoadedOnce) return;
+
+    const handleBeforeUnload = (e) => {
+      console.log('⚠️ Page unloading, flushing all pending saves...');
+      firebase.flushPendingSaves();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [firebase, hasLoadedOnce]);
 
   const value = {
     // Firebase

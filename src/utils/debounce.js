@@ -6,9 +6,12 @@
 export function debounce(func, wait) {
   let timeout;
   let isCancelled = false;
+  let lastArgs = null;
 
   const debouncedFunction = function executedFunction(...args) {
     if (isCancelled) return;
+
+    lastArgs = args; // Save the most recent arguments
 
     const later = () => {
       timeout = null;
@@ -25,17 +28,19 @@ export function debounce(func, wait) {
   debouncedFunction.cancel = function() {
     clearTimeout(timeout);
     timeout = null;
+    lastArgs = null;
     isCancelled = true;
   };
 
-  // Execute immediately if pending, otherwise do nothing
-  debouncedFunction.flush = function(...args) {
+  // Execute immediately with the last pending arguments
+  debouncedFunction.flush = function() {
     if (timeout) {
       clearTimeout(timeout);
       timeout = null;
     }
-    if (!isCancelled && args.length > 0) {
-      func(...args);
+    if (!isCancelled && lastArgs !== null) {
+      func(...lastArgs);
+      lastArgs = null;
     }
   };
 

@@ -134,6 +134,21 @@ export function useFirebase(posthog) {
     if (templates) debouncedSaveTemplates(templates);
   }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]);
 
+  // Flush saves before page unload to prevent data loss on hard refresh
+  const flushPendingSaves = useCallback(() => {
+    console.log('⚠️ Flushing pending saves before page unload...');
+    // Call flush if it exists (our debounce implementation has it)
+    if (debouncedSaveCards?.flush) {
+      debouncedSaveCards.flush();
+    }
+    if (debouncedSaveDailyDeck?.flush) {
+      debouncedSaveDailyDeck.flush();
+    }
+    if (debouncedSaveTemplates?.flush) {
+      debouncedSaveTemplates.flush();
+    }
+  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -152,6 +167,7 @@ export function useFirebase(posthog) {
     debouncedSaveTemplates,
     loadData,
     retrySave,
+    flushPendingSaves,
     isUsingFirebase: firebaseStorage.isUsingFirebase(),
     offlinePersistenceEnabled: firebaseStorage.offlinePersistenceEnabled,
     getUserId: () => firebaseStorage.getUserId(),

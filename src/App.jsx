@@ -27,6 +27,7 @@ function AuthenticatedApp() {
     getAvailableCards,
     // Daily Deck
     dailyDeck,
+    setDailyDeck,
     removeCardById,
     // Templates
     templates,
@@ -179,6 +180,22 @@ function AuthenticatedApp() {
                 onSaveTemplate={saveTemplate}
                 onLoadTemplate={loadFromTemplate}
                 onDeleteTemplate={deleteTemplate}
+                onUpdateCard={(index, updates) => {
+                  const updatedDeck = dailyDeck.map((card, i) =>
+                    i === index ? { ...card, ...updates } : card
+                  );
+                  // This will trigger the auto-save in AppContext
+                  setDailyDeck(updatedDeck);
+
+                  // Track completion if card is being completed
+                  if (updates.completed && updates.timeSpent) {
+                    posthog.capture('card_completed', {
+                      card_id: dailyDeck[index]?.id,
+                      time_spent: updates.timeSpent,
+                      suggested_duration: dailyDeck[index]?.duration,
+                    });
+                  }
+                }}
               />
             </div>
           </div>
