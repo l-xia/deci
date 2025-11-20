@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import type { PostHog } from 'posthog-js';
 import { CATEGORY_KEYS } from '../constants';
 import type { Card, CardsByCategory, CategoryKey } from '../types';
+import { generateId } from '../utils/generateId';
 
 const INITIAL_CARDS_STATE: CardsByCategory = {
   [CATEGORY_KEYS.STRUCTURE]: [],
@@ -15,7 +16,7 @@ export function useCards(initialCards: CardsByCategory = INITIAL_CARDS_STATE) {
 
   const addCard = useCallback((category: CategoryKey, cardData: Partial<Card>, posthog: PostHog | null) => {
     const newCard: Card = {
-      id: `${category}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      id: generateId(category),
       title: cardData.title || '',
       createdAt: new Date().toISOString(),
       ...cardData,
@@ -36,7 +37,7 @@ export function useCards(initialCards: CardsByCategory = INITIAL_CARDS_STATE) {
     });
 
     return newCard;
-  }, []);
+  }, []); // posthog is passed as parameter, not captured in closure
 
   const updateCard = useCallback((category: CategoryKey, cardId: string, updates: Partial<Card>, posthog: PostHog | null) => {
     setCards((prev) => ({
@@ -53,7 +54,7 @@ export function useCards(initialCards: CardsByCategory = INITIAL_CARDS_STATE) {
       category,
       updated_fields: Object.keys(updates),
     });
-  }, []);
+  }, []); // posthog is passed as parameter, not captured in closure
 
   const deleteCard = useCallback((category: CategoryKey, cardId: string, posthog: PostHog | null) => {
     setCards((prev) => ({
@@ -65,7 +66,7 @@ export function useCards(initialCards: CardsByCategory = INITIAL_CARDS_STATE) {
       card_id: cardId,
       category,
     });
-  }, []);
+  }, []); // posthog is passed as parameter, not captured in closure
 
   const getAvailableCards = useCallback((category: CategoryKey, dailyDeck: Card[]) => {
     return cards[category].filter((card) => {

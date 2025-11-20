@@ -37,8 +37,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  interface FirebaseAuthError {
+    code: string;
+    message: string;
+  }
+
   // Helper to format Firebase errors
-  const formatFirebaseError = (err: any): string => {
+  const formatFirebaseError = (err: FirebaseAuthError): string => {
     console.error('Firebase Auth Error:', err);
 
     // Network-related errors
@@ -93,8 +98,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null);
       await signOut(auth);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const formattedError = formatFirebaseError(err as FirebaseAuthError);
+      setError(formattedError);
       throw err;
     }
   };

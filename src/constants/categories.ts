@@ -1,4 +1,4 @@
-import type { CategoryData, CategoryColors } from '../types';
+import type { CategoryData, CategoryColors, CategoryKey } from '../types';
 
 export const CATEGORY_KEYS = {
   STRUCTURE: 'structure',
@@ -6,8 +6,6 @@ export const CATEGORY_KEYS = {
   PLAY: 'play',
   DEFAULT: 'default',
 } as const;
-
-export type CategoryKey = typeof CATEGORY_KEYS[keyof typeof CATEGORY_KEYS];
 
 export const CATEGORIES: Record<CategoryKey, CategoryData> = {
   [CATEGORY_KEYS.STRUCTURE]: {

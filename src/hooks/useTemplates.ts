@@ -1,17 +1,14 @@
 import { useState, useCallback } from 'react';
 import type { PostHog } from 'posthog-js';
 import type { Template, Card, CategoryKey } from '../types';
-
-function generateTemplateId(): string {
-  return `template-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-}
+import { generateId } from '../utils/generateId';
 
 export function useTemplates(initialTemplates: Template[] = []) {
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
 
   const saveTemplate = useCallback((name: string, dailyDeck: Card[], posthog: PostHog | null) => {
     const newTemplate: Template = {
-      id: generateTemplateId(),
+      id: generateId('template'),
       name,
       cards: dailyDeck.map(card => ({
         id: card.id,

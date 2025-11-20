@@ -65,7 +65,7 @@ function AuthenticatedApp() {
     templates.deleteTemplate(templateId, posthog);
   }, [templates, posthog]);
 
-  const handleUpdateCard = useCallback((index: number, updates: any) => {
+  const handleUpdateCard = useCallback((index: number, updates: Partial<Card>) => {
     const updatedDeck = dailyDeck.dailyDeck.map((card, i) =>
       i === index ? { ...card, ...updates } : card
     );

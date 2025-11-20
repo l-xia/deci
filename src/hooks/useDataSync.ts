@@ -1,14 +1,33 @@
 import { useEffect, useState, useRef } from 'react';
 import type { PostHog } from 'posthog-js';
+import type { CardsByCategory } from '../types/card';
+import type { Card } from '../types/card';
+import type { Template } from '../types/template';
+
+interface FirebaseReturnType {
+  initialized: boolean;
+  debouncedSaveCards: (data: CardsByCategory) => void;
+  debouncedSaveDailyDeck: (data: Card[]) => void;
+  debouncedSaveTemplates: (data: Template[]) => void;
+  loadData: () => Promise<{
+    cards: CardsByCategory | null;
+    dailyDeck: Card[] | null;
+    templates: Template[] | null;
+    hasData?: boolean;
+  }>;
+  flushPendingSaves: () => void;
+  getUserId: () => string | null;
+  offlinePersistenceEnabled?: boolean;
+}
 
 interface DataSyncOptions {
-  firebase: any;
-  cards: any;
-  dailyDeck: any;
-  templates: any;
-  setCards: (cards: any) => void;
-  setDailyDeck: (deck: any) => void;
-  setTemplates: (templates: any) => void;
+  firebase: FirebaseReturnType;
+  cards: CardsByCategory;
+  dailyDeck: Card[];
+  templates: Template[];
+  setCards: (cards: CardsByCategory) => void;
+  setDailyDeck: (deck: Card[]) => void;
+  setTemplates: (templates: Template[]) => void;
   posthog: PostHog | null;
 }
 
@@ -21,12 +40,11 @@ export function useDataSync({
   setDailyDeck,
   setTemplates,
   posthog,
-}: DataSyncOptions) {
+}: DataSyncOptions): { hasLoadedOnce: boolean } {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const lastSavedCardsRef = useRef<string>('');
-  const lastSavedDailyDeckRef = useRef<string>('');
-  const lastSavedTemplatesRef = useRef<string>('');
-  const effectRunCountRef = useRef(0);
+  const lastSavedCardsRef = useRef<CardsByCategory | null>(null);
+  const lastSavedDailyDeckRef = useRef<Card[] | null>(null);
+  const lastSavedTemplatesRef = useRef<Template[] | null>(null);
 
   useEffect(() => {
     if (firebase.initialized && !hasLoadedOnce) {
@@ -43,17 +61,17 @@ export function useDataSync({
 
         if (loadedCards) {
           setCards(loadedCards);
-          lastSavedCardsRef.current = JSON.stringify(loadedCards);
+          lastSavedCardsRef.current = loadedCards;
         }
 
         if (loadedDailyDeck) {
           setDailyDeck(loadedDailyDeck);
-          lastSavedDailyDeckRef.current = JSON.stringify(loadedDailyDeck);
+          lastSavedDailyDeckRef.current = loadedDailyDeck;
         }
 
         if (loadedTemplates) {
           setTemplates(loadedTemplates);
-          lastSavedTemplatesRef.current = JSON.stringify(loadedTemplates);
+          lastSavedTemplatesRef.current = loadedTemplates;
         }
 
         setHasLoadedOnce(true);
@@ -75,12 +93,12 @@ export function useDataSync({
 
   useEffect(() => {
     if (firebase.initialized && hasLoadedOnce) {
-      const currentCards = JSON.stringify(cards);
-      if (currentCards !== lastSavedCardsRef.current) {
+      // Check reference equality - React state updates create new references
+      if (cards !== lastSavedCardsRef.current) {
         console.log('📝 Cards changed, triggering debounced save...', {
           cardsCount: Object.values(cards).flat().length
         });
-        lastSavedCardsRef.current = currentCards;
+        lastSavedCardsRef.current = cards;
         firebase.debouncedSaveCards(cards);
       }
     }
@@ -88,9 +106,9 @@ export function useDataSync({
 
   useEffect(() => {
     if (firebase.initialized && hasLoadedOnce) {
-      const currentDailyDeck = JSON.stringify(dailyDeck);
-      if (currentDailyDeck !== lastSavedDailyDeckRef.current) {
-        lastSavedDailyDeckRef.current = currentDailyDeck;
+      // Check reference equality - React state updates create new references
+      if (dailyDeck !== lastSavedDailyDeckRef.current) {
+        lastSavedDailyDeckRef.current = dailyDeck;
         firebase.debouncedSaveDailyDeck(dailyDeck);
       }
     }
@@ -98,9 +116,9 @@ export function useDataSync({
 
   useEffect(() => {
     if (firebase.initialized && hasLoadedOnce) {
-      const currentTemplates = JSON.stringify(templates);
-      if (currentTemplates !== lastSavedTemplatesRef.current) {
-        lastSavedTemplatesRef.current = currentTemplates;
+      // Check reference equality - React state updates create new references
+      if (templates !== lastSavedTemplatesRef.current) {
+        lastSavedTemplatesRef.current = templates;
         firebase.debouncedSaveTemplates(templates);
       }
     }

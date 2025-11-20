@@ -20,3 +20,7 @@ export type {
   NumericValidationResult,
   CardValidationResult,
 } from './card';
+
+// Export Zod schemas for form validation
+export { cardSchema, templateNameSchema } from './schemas';
+export type { CardFormData } from './schemas';

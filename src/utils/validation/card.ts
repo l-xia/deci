@@ -20,7 +20,13 @@ export interface BasicValidationResult {
 export interface CardValidationResult {
   valid: boolean;
   errors: Record<string, string>;
-  sanitizedData: Record<string, any>;
+  sanitizedData: {
+    title: string;
+    description: string;
+    duration: number | null;
+    recurrenceType?: string;
+    maxUses?: number | null;
+  };
 }
 
 export const VALIDATION_RULES = {
@@ -217,36 +223,48 @@ export function validateTemplateName(name: string): ValidationResult {
   };
 }
 
-export function validateCard(cardData: any): CardValidationResult {
-  const errors: Record<string, string> = {};
-  const sanitizedData: Record<string, any> = {};
+interface CardInput {
+  title?: unknown;
+  description?: unknown;
+  duration?: unknown;
+  recurrenceType?: unknown;
+  maxUses?: unknown;
+}
 
-  const titleValidation = validateTitle(cardData.title);
+export function validateCard(cardData: CardInput): CardValidationResult {
+  const errors: Record<string, string> = {};
+  const sanitizedData: CardValidationResult['sanitizedData'] = {
+    title: '',
+    description: '',
+    duration: null,
+  };
+
+  const titleValidation = validateTitle(String(cardData.title || ''));
   if (!titleValidation.valid) {
     errors.title = titleValidation.error!;
   }
   sanitizedData.title = titleValidation.sanitized;
 
-  const descriptionValidation = validateDescription(cardData.description);
+  const descriptionValidation = validateDescription(String(cardData.description || ''));
   if (!descriptionValidation.valid) {
     errors.description = descriptionValidation.error!;
   }
   sanitizedData.description = descriptionValidation.sanitized;
 
-  const durationValidation = validateDuration(cardData.duration);
+  const durationValidation = validateDuration(cardData.duration as string | number);
   if (!durationValidation.valid) {
     errors.duration = durationValidation.error!;
   }
   sanitizedData.duration = durationValidation.value;
 
-  const recurrenceValidation = validateRecurrenceType(cardData.recurrenceType);
+  const recurrenceValidation = validateRecurrenceType(String(cardData.recurrenceType || ''));
   if (!recurrenceValidation.valid) {
     errors.recurrenceType = recurrenceValidation.error!;
   }
-  sanitizedData.recurrenceType = cardData.recurrenceType;
+  sanitizedData.recurrenceType = String(cardData.recurrenceType);
 
   if (cardData.recurrenceType === 'limited') {
-    const maxUsesValidation = validateMaxUses(cardData.maxUses);
+    const maxUsesValidation = validateMaxUses(cardData.maxUses as string | number);
     if (!maxUsesValidation.valid) {
       errors.maxUses = maxUsesValidation.error!;
     }
@@ -260,7 +278,7 @@ export function validateCard(cardData: any): CardValidationResult {
   };
 }
 
-export function validateLoadedData(data: any, expectedType: 'cards' | 'dailyDeck' | 'templates'): BasicValidationResult {
+export function validateLoadedData(data: unknown, expectedType: 'cards' | 'dailyDeck' | 'templates'): BasicValidationResult {
   if (!data) {
     return { valid: true, error: null }; // null/undefined is fine, just means no data saved yet
   }
@@ -272,7 +290,7 @@ export function validateLoadedData(data: any, expectedType: 'cards' | 'dailyDeck
       }
       const requiredKeys = ['structure', 'upkeep', 'play', 'default'];
       for (const key of requiredKeys) {
-        if (!Array.isArray(data[key])) {
+        if (!Array.isArray((data as Record<string, unknown>)[key])) {
           return { valid: false, error: `Cards.${key} must be an array` };
         }
       }
