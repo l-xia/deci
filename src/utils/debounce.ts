@@ -13,24 +13,33 @@ export function debounce<T extends (...args: any[]) => any>(
   let lastArgs: Parameters<T> | null = null;
 
   const debouncedFunction = function executedFunction(...args: Parameters<T>): void {
-    if (isCancelled) return;
+    if (isCancelled) {
+      console.log('⚠️ Debounce called but is cancelled, resetting...');
+      isCancelled = false;
+    }
 
     lastArgs = args;
 
     const later = () => {
+      console.log('⏰ Debounce timer fired!');
       timeout = null;
       if (!isCancelled) {
         func(...args);
+      } else {
+        console.log('⚠️ Timer fired but function is cancelled');
       }
     };
 
     if (timeout !== null) {
+      console.log('⏱️ Clearing existing timeout');
       clearTimeout(timeout);
     }
+    console.log(`⏱️ Setting timeout for ${wait}ms`);
     timeout = setTimeout(later, wait);
   };
 
   debouncedFunction.cancel = function(): void {
+    console.log('🚫 Debounce CANCELLED', new Error().stack);
     if (timeout !== null) {
       clearTimeout(timeout);
     }

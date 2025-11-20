@@ -45,39 +45,73 @@ export function useFirebase(posthog: PostHog | null) {
     return unsubscribe;
   }, [posthog]);
 
-  const createSaveFunction = useCallback((key: StorageKey) => {
-    return debounce(async (data: unknown) => {
+  const debouncedSaveCards = useMemo(
+    () => debounce(async (data: unknown) => {
+      console.log(`⏰ Debounce timer expired for cards, saving now...`);
       setSaveStatus('saving');
-      const result = await firebaseStorage.save(key, data);
+      const result = await firebaseStorage.save(STORAGE_KEYS.CARDS as StorageKey, data);
       if (result.success) {
         setSaveStatus('saved');
         setSaveError(null);
       } else {
         setSaveStatus('error');
         setSaveError(result.error);
-        console.error(`Failed to save ${key}:`, result.error);
+        console.error(`Failed to save cards:`, result.error);
         posthog?.capture('save_error', {
-          key,
+          key: 'cards',
           error: result.error?.message,
           code: result.error?.code,
         });
       }
-    }, DEBOUNCE_DELAY.SAVE);
-  }, [posthog]);
-
-  const debouncedSaveCards = useMemo(
-    () => createSaveFunction(STORAGE_KEYS.CARDS as StorageKey),
-    [createSaveFunction]
+    }, DEBOUNCE_DELAY.SAVE),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const debouncedSaveDailyDeck = useMemo(
-    () => createSaveFunction(STORAGE_KEYS.DAILY_DECK as StorageKey),
-    [createSaveFunction]
+    () => debounce(async (data: unknown) => {
+      console.log(`⏰ Debounce timer expired for dailyDeck, saving now...`);
+      setSaveStatus('saving');
+      const result = await firebaseStorage.save(STORAGE_KEYS.DAILY_DECK as StorageKey, data);
+      if (result.success) {
+        setSaveStatus('saved');
+        setSaveError(null);
+      } else {
+        setSaveStatus('error');
+        setSaveError(result.error);
+        console.error(`Failed to save dailyDeck:`, result.error);
+        posthog?.capture('save_error', {
+          key: 'dailyDeck',
+          error: result.error?.message,
+          code: result.error?.code,
+        });
+      }
+    }, DEBOUNCE_DELAY.SAVE),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const debouncedSaveTemplates = useMemo(
-    () => createSaveFunction(STORAGE_KEYS.TEMPLATES as StorageKey),
-    [createSaveFunction]
+    () => debounce(async (data: unknown) => {
+      console.log(`⏰ Debounce timer expired for templates, saving now...`);
+      setSaveStatus('saving');
+      const result = await firebaseStorage.save(STORAGE_KEYS.TEMPLATES as StorageKey, data);
+      if (result.success) {
+        setSaveStatus('saved');
+        setSaveError(null);
+      } else {
+        setSaveStatus('error');
+        setSaveError(result.error);
+        console.error(`Failed to save templates:`, result.error);
+        posthog?.capture('save_error', {
+          key: 'templates',
+          error: result.error?.message,
+          code: result.error?.code,
+        });
+      }
+    }, DEBOUNCE_DELAY.SAVE),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const loadData = useCallback(async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { PostHog } from 'posthog-js';
 
 interface DataSyncOptions {
@@ -23,22 +23,37 @@ export function useDataSync({
   posthog,
 }: DataSyncOptions) {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const lastSavedCardsRef = useRef<string>('');
+  const lastSavedDailyDeckRef = useRef<string>('');
+  const lastSavedTemplatesRef = useRef<string>('');
+  const effectRunCountRef = useRef(0);
 
   useEffect(() => {
     if (firebase.initialized && !hasLoadedOnce) {
       const loadInitialData = async () => {
+        console.log('🔄 Loading data from Firebase...');
         const { cards: loadedCards, dailyDeck: loadedDailyDeck, templates: loadedTemplates, hasData } = await firebase.loadData();
+
+        console.log('📦 Loaded data:', {
+          cardsCount: loadedCards ? Object.values(loadedCards).flat().length : 0,
+          dailyDeckCount: loadedDailyDeck?.length || 0,
+          templatesCount: loadedTemplates?.length || 0,
+          hasData
+        });
 
         if (loadedCards) {
           setCards(loadedCards);
+          lastSavedCardsRef.current = JSON.stringify(loadedCards);
         }
 
         if (loadedDailyDeck) {
           setDailyDeck(loadedDailyDeck);
+          lastSavedDailyDeckRef.current = JSON.stringify(loadedDailyDeck);
         }
 
         if (loadedTemplates) {
           setTemplates(loadedTemplates);
+          lastSavedTemplatesRef.current = JSON.stringify(loadedTemplates);
         }
 
         setHasLoadedOnce(true);
@@ -60,21 +75,36 @@ export function useDataSync({
 
   useEffect(() => {
     if (firebase.initialized && hasLoadedOnce) {
-      firebase.debouncedSaveCards(cards);
+      const currentCards = JSON.stringify(cards);
+      if (currentCards !== lastSavedCardsRef.current) {
+        console.log('📝 Cards changed, triggering debounced save...', {
+          cardsCount: Object.values(cards).flat().length
+        });
+        lastSavedCardsRef.current = currentCards;
+        firebase.debouncedSaveCards(cards);
+      }
     }
-  }, [cards, firebase.initialized, firebase, hasLoadedOnce]);
+  }, [cards, firebase.initialized, firebase.debouncedSaveCards, hasLoadedOnce]);
 
   useEffect(() => {
     if (firebase.initialized && hasLoadedOnce) {
-      firebase.debouncedSaveDailyDeck(dailyDeck);
+      const currentDailyDeck = JSON.stringify(dailyDeck);
+      if (currentDailyDeck !== lastSavedDailyDeckRef.current) {
+        lastSavedDailyDeckRef.current = currentDailyDeck;
+        firebase.debouncedSaveDailyDeck(dailyDeck);
+      }
     }
-  }, [dailyDeck, firebase.initialized, firebase, hasLoadedOnce]);
+  }, [dailyDeck, firebase.initialized, firebase.debouncedSaveDailyDeck, hasLoadedOnce]);
 
   useEffect(() => {
     if (firebase.initialized && hasLoadedOnce) {
-      firebase.debouncedSaveTemplates(templates);
+      const currentTemplates = JSON.stringify(templates);
+      if (currentTemplates !== lastSavedTemplatesRef.current) {
+        lastSavedTemplatesRef.current = currentTemplates;
+        firebase.debouncedSaveTemplates(templates);
+      }
     }
-  }, [templates, firebase.initialized, firebase, hasLoadedOnce]);
+  }, [templates, firebase.initialized, firebase.debouncedSaveTemplates, hasLoadedOnce]);
 
   useEffect(() => {
     if (!firebase.initialized || !hasLoadedOnce) return;
