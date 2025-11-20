@@ -4,8 +4,8 @@
  */
 
 import { doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { validateLoadedData } from './validators';
+import { db, auth } from './config';
+import { validateLoadedData } from '../../utils/validators';
 
 // Error types for better error handling
 export class FirebaseStorageError extends Error {

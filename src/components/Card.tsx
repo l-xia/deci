@@ -1,14 +1,18 @@
 import { Draggable } from '@hello-pangea/dnd';
+import type { Card as CardType } from '../types';
+import { getCategoryColors } from '../utils/categories';
 
-function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey }) {
-  // Map category to border and highlight colors
-  const categoryColors = {
-    structure: { border: 'border-green-300', highlight: 'bg-green-300' },
-    upkeep: { border: 'border-orange-300', highlight: 'bg-orange-300' },
-    play: { border: 'border-pink-300', highlight: 'bg-pink-300' },
-    default: { border: 'border-purple-300', highlight: 'bg-purple-300' },
-  };
-  const colors = categoryColors[categoryKey] || categoryColors.default;
+interface CardProps {
+  card: CardType;
+  index: number;
+  onEdit: (card: CardType) => void;
+  onDelete: (id: string) => void;
+  isDailyDeck?: boolean;
+  categoryKey: 'structure' | 'upkeep' | 'play' | 'default';
+}
+
+function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey }: CardProps) {
+  const colors = getCategoryColors(categoryKey);
 
   return (
     <Draggable draggableId={card.id} index={index}>
@@ -36,7 +40,7 @@ function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey 
                     {card.duration} min
                   </span>
                 )}
-                {card.recurrenceType === 'limited' && (
+                {card.recurrenceType === 'limited' && card.maxUses && (
                   <span className="inline-block px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-md">
                     {card.maxUses - (card.timesUsed || 0)}/{card.maxUses} left
                   </span>

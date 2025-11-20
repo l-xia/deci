@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Card } from '../types';
+import { formatTime } from '../utils/formatTime';
 
 interface TimerProps {
   card: Card;
@@ -9,7 +10,7 @@ interface TimerProps {
 function Timer({ card, onComplete }: TimerProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isRunning) {
@@ -45,12 +46,6 @@ function Timer({ card, onComplete }: TimerProps) {
   const handleReset = () => {
     setIsRunning(false);
     setSeconds(0);
-  };
-
-  const formatTime = (totalSeconds: number): string => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}:${String(secs).padStart(2, '0')}`;
   };
 
   if (card.completed) {

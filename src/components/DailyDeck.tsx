@@ -1,12 +1,20 @@
 import { Droppable, Draggable } from '@hello-pangea/dnd';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import type { Card, Template } from '../types';
 import Timer from './Timer';
 import TemplateManager from './TemplateManager';
-import { getCategoryColors } from '../constants/categories';
-import { UI_CONSTANTS } from '../constants/config';
+import { getCategoryColors } from '../utils/categories';
+import { formatTime } from '../utils/formatTime';
 
-function DailyDeckCard({ card, index, onUpdateCard, onDoubleClick }) {
-  const colors = getCategoryColors(card.sourceCategory);
+interface DailyDeckCardProps {
+  card: Card;
+  index: number;
+  onUpdateCard: (index: number, updates: Partial<Card>) => void;
+  onDoubleClick: (index: number) => void;
+}
+
+function DailyDeckCard({ card, index, onUpdateCard, onDoubleClick }: DailyDeckCardProps) {
+  const colors = getCategoryColors(card.sourceCategory || 'default');
   const borderColor = colors.border;
   const highlightColor = colors.highlight;
 
@@ -30,7 +38,6 @@ function DailyDeckCard({ card, index, onUpdateCard, onDoubleClick }) {
           }}
         >
           {isFirstCard ? (
-            // Full square card for first card
             <>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -61,19 +68,18 @@ function DailyDeckCard({ card, index, onUpdateCard, onDoubleClick }) {
                 }}
               />
 
-              {card.completed && (
+              {card.completed && card.timeSpent && (
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
                   <div className="flex items-center gap-2 text-green-700">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-base">Completed in {Math.floor(card.timeSpent / 60)}:{String(card.timeSpent % 60).padStart(2, '0')}</span>
+                    <span className="text-base">Completed in {formatTime(card.timeSpent)}</span>
                   </div>
                 </div>
               )}
             </>
           ) : (
-            // Compact horizontal row for other cards
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold text-gray-900 relative inline-block">
                 <span className="relative z-10">{card.title}</span>
@@ -92,57 +98,48 @@ function DailyDeckCard({ card, index, onUpdateCard, onDoubleClick }) {
   );
 }
 
-function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [focusedCardIndex, setFocusedCardIndex] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
+interface DailyDeckProps {
+  cards: Card[];
+  onUpdateCard: (index: number, updates: Partial<Card>) => void;
+  templates: Template[];
+  onSaveTemplate: (name: string) => void;
+  onLoadTemplate: (templateId: string) => void;
+  onDeleteTemplate: (templateId: string) => void;
+}
+
+interface DailyDeckState {
+  menuOpen: boolean;
+  focusedCardIndex: number | null;
+  drawerOpen: boolean;
+}
+
+function DailyDeck({ cards, onUpdateCard, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate }: DailyDeckProps) {
+  const [state, setState] = useState<DailyDeckState>({
+    menuOpen: false,
+    focusedCardIndex: null,
+    drawerOpen: false,
+  });
 
   useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && focusedCardIndex !== null) {
-        setFocusedCardIndex(null);
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && state.focusedCardIndex !== null) {
+        setState((prev) => ({ ...prev, focusedCardIndex: null }));
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [focusedCardIndex]);
+  }, [state.focusedCardIndex]);
 
-  const handleTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientY);
-  };
-
-  const handleTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientY);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-
-    const distance = touchStart - touchEnd;
-    const isUpSwipe = distance > UI_CONSTANTS.SWIPE_THRESHOLD;
-    const isDownSwipe = distance < -UI_CONSTANTS.SWIPE_THRESHOLD;
-
-    if (isUpSwipe) {
-      setDrawerOpen(true);
-    }
-    if (isDownSwipe) {
-      setDrawerOpen(false);
-    }
-  };
-
-  const handleDoubleClick = (index) => {
-    setFocusedCardIndex(index);
-  };
+  const handleDoubleClick = useCallback((index: number) => {
+    setState((prev) => ({ ...prev, focusedCardIndex: index }));
+  }, []);
 
   return (
     <>
-      {drawerOpen && (
+      {state.drawerOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
-          onClick={() => setDrawerOpen(false)}
+          onClick={() => setState((prev) => ({ ...prev, drawerOpen: false }))}
         />
       )}
 
@@ -152,20 +149,25 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
           lg:relative lg:h-[820px] lg:p-4
           lg:static lg:translate-y-0
           transition-all duration-300 ease-in-out
-          ${drawerOpen
+          ${state.drawerOpen
             ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none'
             : 'relative h-full'}
         `}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
-        <div
-          className="lg:hidden flex justify-center pt-2 pb-1 cursor-pointer flex-shrink-0"
-          onClick={() => setDrawerOpen(!drawerOpen)}
+        <button
+          className="lg:hidden flex justify-center items-center pt-2 pb-1 cursor-pointer flex-shrink-0 hover:bg-gray-50 transition-colors"
+          onClick={() => setState((prev) => ({ ...prev, drawerOpen: !prev.drawerOpen }))}
+          aria-label={state.drawerOpen ? 'Close drawer' : 'Open drawer'}
         >
-          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
-        </div>
+          <svg
+            className={`w-6 h-6 text-gray-500 transition-transform duration-200 ${state.drawerOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
         <div className="p-4 flex flex-col flex-1 min-h-0">
           <div className="mb-4 flex-shrink-0 flex justify-between items-start">
@@ -176,7 +178,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
 
         <div className="relative">
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={() => setState((prev) => ({ ...prev, menuOpen: !prev.menuOpen }))}
             className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
             title="Menu"
           >
@@ -187,19 +189,19 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
             </svg>
           </button>
 
-          {menuOpen && (
+          {state.menuOpen && (
             <>
               <div
                 className="fixed inset-0 z-10"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => setState((prev) => ({ ...prev, menuOpen: false }))}
               />
               <div className="absolute right-0 mt-2 w-80 bg-white border-2 border-gray-200 rounded-md shadow-lg z-20 max-h-96 overflow-y-auto">
                 <TemplateManager
                   templates={templates}
                   onSave={onSaveTemplate}
-                  onLoad={(templateId) => {
+                  onLoad={(templateId: string) => {
                     onLoadTemplate(templateId);
-                    setMenuOpen(false);
+                    setState((prev) => ({ ...prev, menuOpen: false }));
                   }}
                   onDelete={onDeleteTemplate}
                   hasDailyDeck={cards.length > 0}
@@ -226,7 +228,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
                 </p>
               </div>
             ) : (
-              cards.map((card, index) => (
+              cards.map((card: Card, index: number) => (
                 <DailyDeckCard
                   key={`${card.id}-${index}`}
                   card={card}
@@ -250,24 +252,26 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
             </div>
             <div className="flex justify-between">
               <span>Completed:</span>
-              <span className="font-medium">{cards.filter(c => c.completed).length}</span>
+              <span className="font-medium">{cards.filter((c: Card) => c.completed).length}</span>
             </div>
           </div>
         </div>
       )}
 
-          {focusedCardIndex !== null && cards[focusedCardIndex] && (
+          {state.focusedCardIndex !== null && cards[state.focusedCardIndex] && (
         <div
           className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-8"
-          onClick={() => setFocusedCardIndex(null)}
+          onClick={() => setState((prev) => ({ ...prev, focusedCardIndex: null }))}
         >
           <div
             className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-full overflow-y-auto p-8 relative"
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
-              const card = cards[focusedCardIndex];
-              const colors = getCategoryColors(card.sourceCategory);
+              const card = cards[state.focusedCardIndex!];
+              if (!card) return null;
+
+              const colors = getCategoryColors(card.sourceCategory || 'default');
               const borderColor = colors.border;
               const highlightColor = colors.highlight;
 
@@ -293,7 +297,7 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
                     <Timer
                       card={card}
                       onComplete={(timeSpent) => {
-                        onUpdateCard(focusedCardIndex, {
+                        onUpdateCard(state.focusedCardIndex!, {
                           completed: true,
                           timeSpent,
                           completedAt: new Date().toISOString(),
@@ -301,14 +305,14 @@ function DailyDeck({ cards, onRemoveCard, onUpdateCard, categories, templates, o
                       }}
                     />
 
-                    {card.completed && (
+                    {card.completed && card.timeSpent && (
                       <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
                         <div className="flex items-center gap-3 text-green-700">
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                           <span className="text-lg font-medium">
-                            Completed in {Math.floor(card.timeSpent / 60)}:{String(card.timeSpent % 60).padStart(2, '0')}
+                            Completed in {formatTime(card.timeSpent)}
                           </span>
                         </div>
                       </div>

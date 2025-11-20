@@ -3,7 +3,7 @@
  */
 
 import { collection, getDocs, query, doc, setDoc, getDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { db, auth } from './config';
 
 export async function debugFirebaseConnection() {
   console.group('🔍 Firebase Debug Info');

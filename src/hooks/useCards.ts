@@ -1,26 +1,24 @@
-/**
- * Custom hook for card management
- */
-
 import { useState, useCallback } from 'react';
+import type { PostHog } from 'posthog-js';
 import { CATEGORY_KEYS } from '../constants';
+import type { Card, CardsByCategory, CategoryKey } from '../types';
 
-const INITIAL_CARDS_STATE = {
+const INITIAL_CARDS_STATE: CardsByCategory = {
   [CATEGORY_KEYS.STRUCTURE]: [],
   [CATEGORY_KEYS.UPKEEP]: [],
   [CATEGORY_KEYS.PLAY]: [],
   [CATEGORY_KEYS.DEFAULT]: [],
 };
 
-export function useCards(initialCards = INITIAL_CARDS_STATE) {
-  const [cards, setCards] = useState(initialCards);
+export function useCards(initialCards: CardsByCategory = INITIAL_CARDS_STATE) {
+  const [cards, setCards] = useState<CardsByCategory>(initialCards);
 
-  // Add a new card to a category
-  const addCard = useCallback((category, cardData, posthog) => {
-    const newCard = {
+  const addCard = useCallback((category: CategoryKey, cardData: Partial<Card>, posthog: PostHog | null) => {
+    const newCard: Card = {
       id: `${category}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-      ...cardData,
+      title: cardData.title || '',
       createdAt: new Date().toISOString(),
+      ...cardData,
     };
 
     setCards((prev) => ({
@@ -28,7 +26,6 @@ export function useCards(initialCards = INITIAL_CARDS_STATE) {
       [category]: [...prev[category], newCard],
     }));
 
-    // Track card creation
     posthog?.capture('card_created', {
       card_id: newCard.id,
       category,
@@ -41,8 +38,7 @@ export function useCards(initialCards = INITIAL_CARDS_STATE) {
     return newCard;
   }, []);
 
-  // Update an existing card
-  const updateCard = useCallback((category, cardId, updates, posthog) => {
+  const updateCard = useCallback((category: CategoryKey, cardId: string, updates: Partial<Card>, posthog: PostHog | null) => {
     setCards((prev) => ({
       ...prev,
       [category]: prev[category].map((card) =>
@@ -59,8 +55,7 @@ export function useCards(initialCards = INITIAL_CARDS_STATE) {
     });
   }, []);
 
-  // Delete a card from a category
-  const deleteCard = useCallback((category, cardId, posthog) => {
+  const deleteCard = useCallback((category: CategoryKey, cardId: string, posthog: PostHog | null) => {
     setCards((prev) => ({
       ...prev,
       [category]: prev[category].filter((card) => card.id !== cardId),
@@ -72,41 +67,18 @@ export function useCards(initialCards = INITIAL_CARDS_STATE) {
     });
   }, []);
 
-  // Get a specific card by category and ID
-  const getCard = useCallback((category, cardId) => {
-    return cards[category]?.find((card) => card.id === cardId);
-  }, [cards]);
-
-  // Get all cards from all categories as a flat array
-  const getAllCards = useCallback(() => {
-    return Object.values(cards).flat();
-  }, [cards]);
-
-  // Get cards count by category
-  const getCardCount = useCallback((category) => {
-    return cards[category]?.length || 0;
-  }, [cards]);
-
-  // Get total cards count
-  const getTotalCardCount = useCallback(() => {
-    return Object.values(cards).reduce((total, categoryCards) => total + categoryCards.length, 0);
-  }, [cards]);
-
-  // Filter cards based on daily deck usage
-  const getAvailableCards = useCallback((category, dailyDeck) => {
+  const getAvailableCards = useCallback((category: CategoryKey, dailyDeck: Card[]) => {
     return cards[category].filter((card) => {
       if (card.recurrenceType === 'once') {
-        // Check if this card is in the daily deck
         const isInDailyDeck = dailyDeck.some((deckCard) => deckCard.id === card.id);
-        return !isInDailyDeck; // Hide if in daily deck
+        return !isInDailyDeck;
       }
       if (card.recurrenceType === 'limited') {
-        // Count how many times this card is in the daily deck
         const timesInDeck = dailyDeck.filter((deckCard) => deckCard.id === card.id).length;
         const maxUses = card.maxUses || 1;
-        return timesInDeck < maxUses; // Hide if limit reached
+        return timesInDeck < maxUses;
       }
-      return true; // 'always' cards are always available
+      return true;
     });
   }, [cards]);
 
@@ -116,10 +88,6 @@ export function useCards(initialCards = INITIAL_CARDS_STATE) {
     addCard,
     updateCard,
     deleteCard,
-    getCard,
-    getAllCards,
-    getCardCount,
-    getTotalCardCount,
     getAvailableCards,
   };
 }

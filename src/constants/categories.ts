@@ -1,7 +1,3 @@
-/**
- * Category definitions for card organization
- */
-
 import type { CategoryData, CategoryColors } from '../types';
 
 export const CATEGORY_KEYS = {
@@ -32,7 +28,7 @@ export const CATEGORIES: Record<CategoryKey, CategoryData> = {
   [CATEGORY_KEYS.DEFAULT]: {
     name: 'Default',
     color: 'bg-purple-100 border-purple-300',
-    description: 'Miscellaneous tasks',
+    description: 'Fallbacks when you don\'t know what to do',
   },
 };
 
@@ -74,24 +70,3 @@ export const CATEGORY_COLORS: Record<CategoryKey, CategoryColors> = {
     ring: 'ring-purple-300',
   },
 };
-
-/**
- * Get category color classes by key
- */
-export function getCategoryColors(categoryKey: string): CategoryColors {
-  return CATEGORY_COLORS[categoryKey as CategoryKey] || CATEGORY_COLORS[CATEGORY_KEYS.DEFAULT];
-}
-
-/**
- * Get category info by key
- */
-export function getCategory(categoryKey: string): CategoryData {
-  return CATEGORIES[categoryKey as CategoryKey] || CATEGORIES[CATEGORY_KEYS.DEFAULT];
-}
-
-/**
- * Check if a category key is valid
- */
-export function isValidCategory(categoryKey: string): categoryKey is CategoryKey {
-  return Object.values(CATEGORY_KEYS).includes(categoryKey as CategoryKey);
-}

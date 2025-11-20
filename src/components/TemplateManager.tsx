@@ -1,19 +1,58 @@
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import type { Template } from '../types';
+import { VALIDATION_RULES } from '../utils/validators';
 
-function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }) {
+interface TemplateManagerProps {
+  templates: Template[];
+  onSave: (name: string) => void;
+  onLoad: (templateId: string) => void;
+  onDelete: (templateId: string) => void;
+  hasDailyDeck: boolean;
+}
+
+const templateSchema = z.object({
+  name: z.string()
+    .min(VALIDATION_RULES.TEMPLATE_NAME_MIN_LENGTH, 'Template name is required')
+    .max(VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH, `Template name must be at most ${VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH} characters`),
+});
+
+type TemplateFormData = z.infer<typeof templateSchema>;
+
+function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }: TemplateManagerProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [templateName, setTemplateName] = useState('');
 
-  const handleSave = () => {
-    if (templateName.trim()) {
-      onSave(templateName.trim());
-      setTemplateName('');
-      setIsSaving(false);
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    reset,
+  } = useForm<TemplateFormData>({
+    resolver: zodResolver(templateSchema),
+    mode: 'onBlur',
+    defaultValues: {
+      name: '',
+    },
+  });
+
+  const templateName = watch('name');
+
+  const onSubmit = (data: TemplateFormData) => {
+    onSave(data.name.trim());
+    reset();
+    setIsSaving(false);
   };
 
-  const handleLoad = (templateId) => {
+  const handleLoad = (templateId: string) => {
     onLoad(templateId);
+  };
+
+  const handleCancel = () => {
+    setIsSaving(false);
+    reset();
   };
 
   return (
@@ -24,7 +63,7 @@ function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }) 
           <div className="text-xs font-medium text-gray-500 uppercase px-2 py-1 mb-1">
             Saved Templates
           </div>
-          {templates.map((template) => (
+          {templates.map((template: Template) => (
             <div
               key={template.id}
               className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md group"
@@ -76,46 +115,63 @@ function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }) 
           </>
         )
       ) : (
-        <div className="p-2">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="p-2">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
             Template Name
           </label>
           <div className="flex flex-col gap-2">
             <input
               type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
+              id="name"
+              {...register('name')}
+              maxLength={VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave();
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(onSubmit)();
+                }
                 if (e.key === 'Escape') {
-                  setIsSaving(false);
-                  setTemplateName('');
+                  handleCancel();
                 }
               }}
               placeholder="e.g., Monday routine"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${
+                errors.name
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-green-500'
+              }`}
               autoFocus
             />
+            <div className="flex justify-between items-center">
+              {errors.name ? (
+                <p className="text-xs text-red-500">
+                  {errors.name.message}
+                </p>
+              ) : (
+                <div></div>
+              )}
+              <span className="text-xs text-gray-400">
+                {templateName?.length || 0}/{VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH}
+              </span>
+            </div>
             <div className="flex gap-2">
               <button
-                onClick={handleSave}
-                disabled={!templateName.trim()}
+                type="submit"
+                disabled={!templateName?.trim()}
                 className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               >
                 Save
               </button>
               <button
-                onClick={() => {
-                  setIsSaving(false);
-                  setTemplateName('');
-                }}
+                type="button"
+                onClick={handleCancel}
                 className="flex-1 px-3 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors text-sm"
               >
                 Cancel
               </button>
             </div>
           </div>
-        </div>
+        </form>
       )}
 
       {/* Empty State */}

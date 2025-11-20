@@ -1,9 +1,19 @@
 import { Droppable } from '@hello-pangea/dnd';
 import Card from './Card';
-import { getCategoryColors } from '../constants';
+import type { Card as CardType } from '../types';
+import { getCategoryColors } from '../utils/categories';
 
-function CardStack({ droppableId, title, cards, color, onAddCard, onEditCard, onDeleteCard }) {
-  // Get colors from the new constants system
+interface CardStackProps {
+  droppableId: 'structure' | 'upkeep' | 'play' | 'default';
+  title: string;
+  cards: CardType[];
+  color: string;
+  onAddCard: () => void;
+  onEditCard: (card: CardType) => void;
+  onDeleteCard: (id: string) => void;
+}
+
+function CardStack({ droppableId, title, cards, onAddCard, onEditCard, onDeleteCard }: CardStackProps) {
   const colors = getCategoryColors(droppableId);
 
   return (

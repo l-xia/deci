@@ -1,48 +1,11 @@
-/**
- * Custom hook for daily deck management
- */
-
 import { useState, useCallback } from 'react';
+import type { PostHog } from 'posthog-js';
+import type { Card, CardsByCategory } from '../types';
 
-export function useDailyDeck(initialDeck = []) {
-  const [dailyDeck, setDailyDeck] = useState(initialDeck);
+export function useDailyDeck(initialDeck: Card[] = []) {
+  const [dailyDeck, setDailyDeck] = useState<Card[]>(initialDeck);
 
-  // Add a card to the daily deck
-  const addToDailyDeck = useCallback((card, sourceCategory, posthog) => {
-    const deckCard = {
-      ...card,
-      sourceCategory,
-      addedAt: new Date().toISOString(),
-    };
-
-    setDailyDeck((prev) => [...prev, deckCard]);
-
-    posthog?.capture('card_added_to_daily_deck', {
-      card_id: card.id,
-      source_category: sourceCategory,
-      deck_size: dailyDeck.length + 1,
-    });
-
-    return deckCard;
-  }, [dailyDeck.length]);
-
-  // Remove a card from the daily deck by index
-  const removeFromDailyDeck = useCallback((index, posthog) => {
-    setDailyDeck((prev) => {
-      const removed = prev[index];
-      const newDeck = prev.filter((_, i) => i !== index);
-
-      posthog?.capture('card_removed_from_daily_deck', {
-        card_id: removed?.id,
-        deck_size: newDeck.length,
-      });
-
-      return newDeck;
-    });
-  }, []);
-
-  // Remove all instances of a card from the daily deck
-  const removeCardById = useCallback((cardId, posthog) => {
+  const removeCardById = useCallback((cardId: string, posthog: PostHog | null) => {
     setDailyDeck((prev) => {
       const newDeck = prev.filter((c) => c.id !== cardId);
       const removedCount = prev.length - newDeck.length;
@@ -57,71 +20,14 @@ export function useDailyDeck(initialDeck = []) {
     });
   }, []);
 
-  // Reorder cards in the daily deck
-  const reorderDailyDeck = useCallback((sourceIndex, destinationIndex) => {
-    setDailyDeck((prev) => {
-      const newDeck = Array.from(prev);
-      const [removed] = newDeck.splice(sourceIndex, 1);
-      newDeck.splice(destinationIndex, 0, removed);
-      return newDeck;
-    });
-  }, []);
-
-  // Mark a card as complete
-  const completeCard = useCallback((index, timeSpent, posthog) => {
-    setDailyDeck((prev) =>
-      prev.map((card, i) =>
-        i === index
-          ? {
-              ...card,
-              completed: true,
-              timeSpent,
-              completedAt: new Date().toISOString(),
-            }
-          : card
-      )
-    );
-
-    posthog?.capture('card_completed', {
-      card_id: dailyDeck[index]?.id,
-      time_spent: timeSpent,
-      suggested_duration: dailyDeck[index]?.duration,
-    });
-  }, [dailyDeck]);
-
-  // Update times used counter for a card
-  const incrementTimesUsed = useCallback((cardId, cards, setCards) => {
-    // Find the card in the cards object and increment timesUsed
-    Object.keys(cards).forEach((category) => {
-      const cardIndex = cards[category].findIndex((c) => c.id === cardId);
-      if (cardIndex !== -1) {
-        setCards((prev) => ({
-          ...prev,
-          [category]: prev[category].map((card, i) =>
-            i === cardIndex
-              ? { ...card, timesUsed: (card.timesUsed || 0) + 1 }
-              : card
-          ),
-        }));
-      }
-    });
-  }, []);
-
-  // Clear the entire daily deck
-  const clearDailyDeck = useCallback((posthog) => {
-    setDailyDeck([]);
-    posthog?.capture('daily_deck_cleared');
-  }, []);
-
-  // Load daily deck from template
-  const loadFromTemplate = useCallback((templateCards, cards, posthog) => {
+  const loadFromTemplate = useCallback((templateCards: Array<{ id: string; sourceCategory: string }>, cards: CardsByCategory, posthog: PostHog | null) => {
     const loadedCards = templateCards
       .map((templateCard) => {
-        const category = templateCard.sourceCategory;
-        const card = cards[category]?.find((c) => c.id === templateCard.id);
+        const category = templateCard.sourceCategory as keyof CardsByCategory;
+        const card = cards[category]?.find((c: Card) => c.id === templateCard.id);
         return card ? { ...card, sourceCategory: category } : null;
       })
-      .filter(Boolean);
+      .filter(Boolean) as Card[];
 
     setDailyDeck(loadedCards);
 
@@ -133,41 +39,10 @@ export function useDailyDeck(initialDeck = []) {
     return loadedCards;
   }, []);
 
-  // Get deck statistics
-  const getDeckStats = useCallback(() => {
-    const totalCards = dailyDeck.length;
-    const completedCards = dailyDeck.filter((c) => c.completed).length;
-    const totalDuration = dailyDeck.reduce((sum, card) => sum + (card.duration || 0), 0);
-    const completedDuration = dailyDeck
-      .filter((c) => c.completed)
-      .reduce((sum, card) => sum + (card.duration || 0), 0);
-    const timeSpent = dailyDeck
-      .filter((c) => c.completed)
-      .reduce((sum, card) => sum + (card.timeSpent || 0), 0);
-
-    return {
-      totalCards,
-      completedCards,
-      remainingCards: totalCards - completedCards,
-      completionPercentage: totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0,
-      totalDuration,
-      completedDuration,
-      remainingDuration: totalDuration - completedDuration,
-      timeSpent,
-    };
-  }, [dailyDeck]);
-
   return {
     dailyDeck,
     setDailyDeck,
-    addToDailyDeck,
-    removeFromDailyDeck,
     removeCardById,
-    reorderDailyDeck,
-    completeCard,
-    incrementTimesUsed,
-    clearDailyDeck,
     loadFromTemplate,
-    getDeckStats,
   };
 }

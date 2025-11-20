@@ -1,12 +1,17 @@
-/**
- * Custom hook for drag and drop logic
- */
-
 import { useCallback } from 'react';
+import type { PostHog } from 'posthog-js';
+import type { DropResult } from '@hello-pangea/dnd';
+import type { Card, CardsByCategory, CategoryKey } from '../types';
 
-export function useDragAndDrop(cards, setCards, dailyDeck, setDailyDeck, posthog) {
+export function useDragAndDrop(
+  cards: CardsByCategory,
+  setCards: (cards: CardsByCategory) => void,
+  dailyDeck: Card[],
+  setDailyDeck: (deck: Card[]) => void,
+  posthog: PostHog | null
+) {
   const onDragEnd = useCallback(
-    (result) => {
+    (result: DropResult) => {
       const { source, destination, draggableId } = result;
 
       if (!destination) return;
@@ -17,7 +22,7 @@ export function useDragAndDrop(cards, setCards, dailyDeck, setDailyDeck, posthog
       const sourceId = source.droppableId;
       const destId = destination.droppableId;
 
-      // Moving within daily deck
+      // Reorder within daily deck
       if (sourceId === 'daily-deck' && destId === 'daily-deck') {
         const newDailyDeck = Array.from(dailyDeck);
         const [removed] = newDailyDeck.splice(source.index, 1);
@@ -31,25 +36,25 @@ export function useDragAndDrop(cards, setCards, dailyDeck, setDailyDeck, posthog
         return;
       }
 
-      // Moving from category to daily deck
+      // Add card from category to daily deck
       if (sourceId !== 'daily-deck' && destId === 'daily-deck') {
         const actualCardId = draggableId.startsWith('daily-')
           ? draggableId.split('-').slice(1, -1).join('-')
           : draggableId;
 
-        const sourceCategory = sourceId;
-        const card = cards[sourceCategory].find((c) => c.id === actualCardId);
+        const sourceCategory = sourceId as CategoryKey;
+        const card = cards[sourceCategory].find((c: Card) => c.id === actualCardId);
 
         if (!card) return;
 
-        // Check if card can be added based on recurrence type
+        // Check recurrence rules
         if (card.recurrenceType === 'once') {
-          const isInDailyDeck = dailyDeck.some((c) => c.id === card.id);
-          if (isInDailyDeck) return; // Can't add again
+          const isInDailyDeck = dailyDeck.some((c: Card) => c.id === card.id);
+          if (isInDailyDeck) return;
         } else if (card.recurrenceType === 'limited') {
-          const timesInDeck = dailyDeck.filter((c) => c.id === card.id).length;
+          const timesInDeck = dailyDeck.filter((c: Card) => c.id === card.id).length;
           const maxUses = card.maxUses || 1;
-          if (timesInDeck >= maxUses) return; // Limit reached
+          if (timesInDeck >= maxUses) return;
         }
 
         const newDailyDeck = Array.from(dailyDeck);
@@ -65,28 +70,30 @@ export function useDragAndDrop(cards, setCards, dailyDeck, setDailyDeck, posthog
         return;
       }
 
-      // Moving from daily deck back to category (remove from daily deck)
+      // Remove card from daily deck
       if (sourceId === 'daily-deck' && destId !== 'daily-deck') {
         const newDailyDeck = Array.from(dailyDeck);
         const [removed] = newDailyDeck.splice(source.index, 1);
         setDailyDeck(newDailyDeck);
 
         posthog?.capture('card_removed_from_daily_deck_via_drag', {
-          card_id: removed.id,
+          card_id: removed?.id,
           deck_size: newDailyDeck.length,
         });
         return;
       }
 
-      // Moving between categories
+      // Move card between categories
       if (sourceId !== 'daily-deck' && destId !== 'daily-deck' && sourceId !== destId) {
         const actualCardId = draggableId.startsWith('daily-')
           ? draggableId.split('-').slice(1, -1).join('-')
           : draggableId;
 
-        const sourceCards = Array.from(cards[sourceId]);
-        const destCards = Array.from(cards[destId]);
-        const cardIndex = sourceCards.findIndex((c) => c.id === actualCardId);
+        const sourceCategory = sourceId as CategoryKey;
+        const destCategory = destId as CategoryKey;
+        const sourceCards = Array.from(cards[sourceCategory]);
+        const destCards = Array.from(cards[destCategory]);
+        const cardIndex = sourceCards.findIndex((c: Card) => c.id === actualCardId);
 
         if (cardIndex === -1) return;
 
@@ -95,22 +102,22 @@ export function useDragAndDrop(cards, setCards, dailyDeck, setDailyDeck, posthog
 
         setCards({
           ...cards,
-          [sourceId]: sourceCards,
-          [destId]: destCards,
+          [sourceCategory]: sourceCards,
+          [destCategory]: destCards,
         });
 
         // Update card instances in daily deck with new source category
-        const updatedDailyDeck = dailyDeck.map((deckCard) =>
+        const updatedDailyDeck = dailyDeck.map((deckCard: Card) =>
           deckCard.id === actualCardId
-            ? { ...deckCard, sourceCategory: destId }
+            ? { ...deckCard, sourceCategory: destCategory }
             : deckCard
         );
         setDailyDeck(updatedDailyDeck);
 
         posthog?.capture('card_moved_between_categories', {
           card_id: actualCardId,
-          from_category: sourceId,
-          to_category: destId,
+          from_category: sourceCategory,
+          to_category: destCategory,
         });
       }
     },

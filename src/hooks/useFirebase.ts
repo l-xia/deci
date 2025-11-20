@@ -3,10 +3,10 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { firebaseStorage } from '../utils/firebaseStorage';
+import { firebaseStorage } from '../services/firebase/storage';
 import { debounce } from '../utils/debounce';
 import { DEBOUNCE_DELAY, STORAGE_KEYS } from '../constants';
-import { auth } from '../firebase';
+import { auth } from '../services/firebase';
 
 export function useFirebase(posthog) {
   const [initialized, setInitialized] = useState(false);

@@ -1,12 +1,13 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
-  User
+  onAuthStateChanged
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import type { User } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -46,7 +47,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     // Common auth errors
-    const errorMessages = {
+    const errorMessages: Record<string, string> = {
       'auth/invalid-email': 'Invalid email address.',
       'auth/user-disabled': 'This account has been disabled.',
       'auth/user-not-found': 'No account found with this email.',
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   // Sign up with email and password
-  const signup = async (email, password) => {
+  const signup = async (email: string, password: string) => {
     try {
       setError(null);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -75,7 +76,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   // Sign in with email and password
-  const login = async (email, password) => {
+  const login = async (email: string, password: string) => {
     try {
       setError(null);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -92,7 +93,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null);
       await signOut(auth);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
       throw err;
     }

@@ -3,7 +3,7 @@
  * Simplified from 422 lines to ~150 lines by extracting logic to hooks and context
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
@@ -16,61 +16,57 @@ import deciLogo from './assets/deci_logo.svg';
 
 function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
-  const {
-    // Firebase
-    firebase,
-    // Cards
-    cards,
-    addCard,
-    updateCard,
-    deleteCard,
-    getAvailableCards,
-    // Daily Deck
-    dailyDeck,
-    setDailyDeck,
-    removeCardById,
-    // Templates
-    templates,
-    saveTemplate,
-    loadFromTemplate,
-    deleteTemplate,
-    // Drag and Drop
-    onDragEnd,
-    // PostHog
-    posthog,
-  } = useApp();
+  const app = useApp();
+
+  // Destructure with composition pattern
+  const { firebase, cards, dailyDeck, templates, dragAndDrop, posthog } = app;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const openModal = (category, card = null) => {
+  const openModal = useCallback((category: string, card: any = null) => {
     setSelectedCategory(category);
     setEditingCard(card);
     setModalOpen(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModalOpen(false);
     setEditingCard(null);
     setSelectedCategory(null);
-  };
+  }, []);
 
-  const handleSaveCard = (cardData) => {
+  const handleSaveCard = useCallback((cardData: any) => {
     if (editingCard) {
-      updateCard(selectedCategory, editingCard.id, cardData, posthog);
+      cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
     } else {
-      addCard(selectedCategory, cardData, posthog);
+      cards.addCard(selectedCategory, cardData, posthog);
     }
     closeModal();
-  };
+  }, [editingCard, selectedCategory, cards, posthog, closeModal]);
 
-  const handleDeleteCard = (category, cardId) => {
+  const handleDeleteCard = useCallback((category: string, cardId: string) => {
     if (confirm('Delete this card? This will also remove it from your daily deck.')) {
-      deleteCard(category, cardId, posthog);
-      removeCardById(cardId, posthog);
+      cards.deleteCard(category, cardId, posthog);
+      dailyDeck.removeCardById(cardId, posthog);
     }
-  };
+  }, [cards, dailyDeck, posthog]);
+
+  const handleSaveTemplate = useCallback((name: string) => {
+    templates.saveTemplate(name, dailyDeck.dailyDeck, posthog);
+  }, [templates, dailyDeck.dailyDeck, posthog]);
+
+  const handleLoadTemplate = useCallback((templateId: string) => {
+    const template = templates.getTemplate(templateId);
+    if (template) {
+      dailyDeck.loadFromTemplate(template.cards, cards.cards, posthog);
+    }
+  }, [templates, dailyDeck, cards.cards, posthog]);
+
+  const handleDeleteTemplate = useCallback((templateId: string) => {
+    templates.deleteTemplate(templateId, posthog);
+  }, [templates, posthog]);
 
   // Show loading state while initializing
   if (!firebase.initialized) {
@@ -85,7 +81,7 @@ function AuthenticatedApp() {
   }
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
+    <DragDropContext onDragEnd={dragAndDrop.onDragEnd}>
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex flex-col">
         <div className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col">
           <header className="mb-6 flex-shrink-0">
@@ -131,7 +127,7 @@ function AuthenticatedApp() {
                 </span>
                 {firebase.saveStatus === 'error' && (
                   <button
-                    onClick={() => firebase.retrySave(cards, dailyDeck, templates)}
+                    onClick={() => firebase.retrySave(cards.cards, dailyDeck.dailyDeck, templates.templates)}
                     className="underline hover:no-underline ml-1 text-red-600"
                     aria-label="Retry saving data"
                   >
@@ -145,8 +141,8 @@ function AuthenticatedApp() {
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
             <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
               <div className="md:grid md:grid-cols-2 md:auto-rows-min md:gap-4 flex md:flex-none overflow-x-auto md:overflow-x-visible gap-4 md:gap-0 pb-4 md:pb-0 snap-x snap-mandatory md:snap-none">
-                {Object.entries(CATEGORIES).map(([key, category]) => {
-                  const filteredCards = getAvailableCards(key, dailyDeck);
+                {(Object.entries(CATEGORIES) as Array<[keyof typeof CATEGORIES, typeof CATEGORIES[keyof typeof CATEGORIES]]>).map(([key, category]) => {
+                  const filteredCards = cards.getAvailableCards(key, dailyDeck.dailyDeck);
                   return (
                     <div key={key} className="flex-shrink-0 w-[85vw] md:w-auto snap-start">
                       <CardStack
@@ -166,26 +162,25 @@ function AuthenticatedApp() {
 
             <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">
               <DailyDeck
-                cards={dailyDeck}
-                categories={CATEGORIES}
-                templates={templates}
-                onSaveTemplate={saveTemplate}
-                onLoadTemplate={loadFromTemplate}
-                onDeleteTemplate={deleteTemplate}
-                onUpdateCard={(index, updates) => {
-                  const updatedDeck = dailyDeck.map((card, i) =>
+                cards={dailyDeck.dailyDeck}
+                templates={templates.templates}
+                onSaveTemplate={handleSaveTemplate}
+                onLoadTemplate={handleLoadTemplate}
+                onDeleteTemplate={handleDeleteTemplate}
+                onUpdateCard={useCallback((index: number, updates: any) => {
+                  const updatedDeck = dailyDeck.dailyDeck.map((card, i) =>
                     i === index ? { ...card, ...updates } : card
                   );
-                  setDailyDeck(updatedDeck);
+                  dailyDeck.setDailyDeck(updatedDeck);
 
                   if (updates.completed && updates.timeSpent) {
-                    posthog.capture('card_completed', {
-                      card_id: dailyDeck[index]?.id,
+                    posthog?.capture('card_completed', {
+                      card_id: dailyDeck.dailyDeck[index]?.id,
                       time_spent: updates.timeSpent,
-                      suggested_duration: dailyDeck[index]?.duration,
+                      suggested_duration: dailyDeck.dailyDeck[index]?.duration,
                     });
                   }
-                }}
+                }, [dailyDeck, posthog])}
               />
             </div>
           </div>
@@ -193,7 +188,6 @@ function AuthenticatedApp() {
 
         {modalOpen && (
           <CardModal
-            category={selectedCategory}
             card={editingCard}
             onSave={handleSaveCard}
             onClose={closeModal}
