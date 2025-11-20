@@ -19,10 +19,14 @@ function AuthenticatedApp() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
+  const [editingDailyDeckIndex, setEditingDailyDeckIndex] = useState<number | null>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const openModal = useCallback((category: CategoryKey, card: Card | null = null) => {
     setSelectedCategory(category);
     setEditingCard(card);
+    setEditingDailyDeckIndex(null);
     setModalOpen(true);
   }, []);
 
@@ -30,18 +34,32 @@ function AuthenticatedApp() {
     setModalOpen(false);
     setEditingCard(null);
     setSelectedCategory(null);
+    setEditingDailyDeckIndex(null);
   }, []);
 
   const handleSaveCard = useCallback((cardData: Partial<Card>) => {
-    if (!selectedCategory) return;
+    if (editingDailyDeckIndex !== null) {
+      // Editing a card in the daily deck
+      const updatedCard = { ...dailyDeck.dailyDeck[editingDailyDeckIndex], ...cardData };
+      const updatedDeck = [...dailyDeck.dailyDeck];
+      updatedDeck[editingDailyDeckIndex] = updatedCard;
+      dailyDeck.setDailyDeck(updatedDeck);
 
-    if (editingCard) {
-      cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
-    } else {
-      cards.addCard(selectedCategory, cardData, posthog);
+      // Also update in the source cards
+      const sourceCategory = updatedCard.sourceCategory;
+      if (sourceCategory) {
+        cards.updateCard(sourceCategory, updatedCard.id, cardData, posthog);
+      }
+    } else if (selectedCategory) {
+      // Editing/creating a card in a stack
+      if (editingCard) {
+        cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
+      } else {
+        cards.addCard(selectedCategory, cardData, posthog);
+      }
     }
     closeModal();
-  }, [editingCard, selectedCategory, cards, posthog, closeModal]);
+  }, [editingCard, selectedCategory, editingDailyDeckIndex, cards, dailyDeck, posthog, closeModal]);
 
   const handleDeleteCard = useCallback((category: CategoryKey, cardId: string) => {
     if (confirm('Delete this card? This will also remove it from your daily deck.')) {
@@ -71,7 +89,7 @@ function AuthenticatedApp() {
     );
     dailyDeck.setDailyDeck(updatedDeck);
 
-    if (updates.completed && updates.timeSpent) {
+    if (updates.completed && updates.timeSpent !== undefined) {
       posthog?.capture('card_completed', {
         card_id: dailyDeck.dailyDeck[index]?.id,
         time_spent: updates.timeSpent,
@@ -79,6 +97,43 @@ function AuthenticatedApp() {
       });
     }
   }, [dailyDeck, posthog]);
+
+  const handleEditDailyDeckCard = useCallback((index: number) => {
+    const card = dailyDeck.dailyDeck[index];
+    if (card) {
+      setEditingCard(card);
+      setEditingDailyDeckIndex(index);
+      setModalOpen(true);
+    }
+  }, [dailyDeck.dailyDeck]);
+
+  const handleDeleteDailyDeckCard = useCallback((index: number) => {
+    dailyDeck.removeCardById(dailyDeck.dailyDeck[index].id, posthog);
+  }, [dailyDeck, posthog]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!firebase.initialized || isRefreshing) return;
+
+    setIsRefreshing(true);
+    try {
+      const result = await firebase.loadData();
+
+      if (result.cards) cards.setCards(result.cards);
+      if (result.dailyDeck) dailyDeck.setDailyDeck(result.dailyDeck);
+      if (result.templates) templates.setTemplates(result.templates);
+
+      posthog?.capture('data_refreshed', {
+        cards_count: result.cards ? Object.values(result.cards).flat().length : 0,
+        daily_deck_count: result.dailyDeck?.length || 0,
+        templates_count: result.templates?.length || 0,
+      });
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+      posthog?.capture('refresh_error', { error: error instanceof Error ? error.message : 'Unknown error' });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [firebase, cards, dailyDeck, templates, posthog, isRefreshing]);
 
   if (!firebase.initialized) {
     return (
@@ -99,14 +154,66 @@ function AuthenticatedApp() {
             <div className="flex items-center justify-between mb-2">
               <img src={deciLogo} alt="Deci" className="h-12" />
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">{currentUser?.email}</span>
-                <button
-                  onClick={logout}
-                  className="text-sm text-gray-500 hover:text-gray-700 underline"
-                >
-                  Sign out
-                </button>
+              <div className="flex items-center gap-3">
+                {firebase.isUsingFirebase && (
+                  <button
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="p-2 text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Refresh data from cloud"
+                  >
+                    <svg
+                      className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                  </button>
+                )}
+
+                <div className="relative">
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors"
+                  >
+                    <span>{currentUser?.email}</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {userMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setUserMenuOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        <button
+                          onClick={() => {
+                            logout();
+                            setUserMenuOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          Sign out
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -176,6 +283,8 @@ function AuthenticatedApp() {
                 onLoadTemplate={handleLoadTemplate}
                 onDeleteTemplate={handleDeleteTemplate}
                 onUpdateCard={handleUpdateCard}
+                onEditCard={handleEditDailyDeckCard}
+                onDeleteCard={handleDeleteDailyDeckCard}
               />
             </div>
           </div>

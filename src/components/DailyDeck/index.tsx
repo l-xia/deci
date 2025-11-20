@@ -9,6 +9,8 @@ import DailyDeckFullscreenModal from './DailyDeckFullscreenModal';
 interface DailyDeckProps {
   cards: Card[];
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
+  onEditCard: (index: number) => void;
+  onDeleteCard: (index: number) => void;
   templates: Template[];
   onSaveTemplate: (name: string) => void;
   onLoadTemplate: (templateId: string) => void;
@@ -18,6 +20,8 @@ interface DailyDeckProps {
 function DailyDeck({
   cards,
   onUpdateCard,
+  onEditCard,
+  onDeleteCard,
   templates,
   onSaveTemplate,
   onLoadTemplate,
@@ -109,15 +113,24 @@ function DailyDeck({
                     </p>
                   </div>
                 ) : (
-                  cards.map((card: Card, index: number) => (
-                    <DailyDeckCard
-                      key={`daily-${card.id}-${index}`}
-                      card={card}
-                      index={index}
-                      onUpdateCard={onUpdateCard}
-                      onDoubleClick={handleDoubleClick}
-                    />
-                  ))
+                  cards.map((card: Card, index: number) => {
+                    // Find the first incomplete card
+                    const firstIncompleteIndex = cards.findIndex(c => !c.completed);
+                    const isFirstIncomplete = index === firstIncompleteIndex;
+
+                    return (
+                      <DailyDeckCard
+                        key={`daily-${card.id}-${index}`}
+                        card={card}
+                        index={index}
+                        isFirstIncomplete={isFirstIncomplete}
+                        onUpdateCard={onUpdateCard}
+                        onEditCard={onEditCard}
+                        onDeleteCard={onDeleteCard}
+                        onDoubleClick={handleDoubleClick}
+                      />
+                    );
+                  })
                 )}
                 {provided.placeholder}
               </div>
