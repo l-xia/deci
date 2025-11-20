@@ -1,7 +1,3 @@
-/**
- * Card-specific validation utilities
- */
-
 import { sanitizeInput } from './input';
 
 export interface ValidationResult {
@@ -27,20 +23,18 @@ export interface CardValidationResult {
   sanitizedData: Record<string, any>;
 }
 
-// Validation constants
 export const VALIDATION_RULES = {
   TITLE_MIN_LENGTH: 1,
   TITLE_MAX_LENGTH: 100,
   DESCRIPTION_MAX_LENGTH: 1000,
   DURATION_MIN: 1,
-  DURATION_MAX: 480, // 8 hours in minutes
+  DURATION_MAX: 480,
   MAX_USES_MIN: 1,
   MAX_USES_MAX: 100,
   TEMPLATE_NAME_MIN_LENGTH: 1,
   TEMPLATE_NAME_MAX_LENGTH: 50,
 };
 
-// Error messages
 export const ERROR_MESSAGES = {
   TITLE_REQUIRED: 'Title is required',
   TITLE_TOO_LONG: `Title must be ${VALIDATION_RULES.TITLE_MAX_LENGTH} characters or less`,
@@ -53,9 +47,6 @@ export const ERROR_MESSAGES = {
   INVALID_CATEGORY: 'Invalid category',
 };
 
-/**
- * Validate card title
- */
 export function validateTitle(title: string): ValidationResult {
   const sanitized = sanitizeInput(title);
 
@@ -82,9 +73,6 @@ export function validateTitle(title: string): ValidationResult {
   };
 }
 
-/**
- * Validate card description
- */
 export function validateDescription(description: string): ValidationResult {
   const sanitized = sanitizeInput(description || '');
 
@@ -103,9 +91,6 @@ export function validateDescription(description: string): ValidationResult {
   };
 }
 
-/**
- * Validate duration value
- */
 export function validateDuration(duration: string | number): NumericValidationResult {
   if (!duration || duration === '') {
     return {
@@ -140,9 +125,6 @@ export function validateDuration(duration: string | number): NumericValidationRe
   };
 }
 
-/**
- * Validate max uses value
- */
 export function validateMaxUses(maxUses: string | number): NumericValidationResult {
   if (!maxUses || maxUses === '') {
     return {
@@ -177,9 +159,6 @@ export function validateMaxUses(maxUses: string | number): NumericValidationResu
   };
 }
 
-/**
- * Validate recurrence type
- */
 export function validateRecurrenceType(recurrenceType: string): BasicValidationResult {
   const validTypes = ['always', 'once', 'limited'];
 
@@ -196,9 +175,6 @@ export function validateRecurrenceType(recurrenceType: string): BasicValidationR
   };
 }
 
-/**
- * Validate category
- */
 export function validateCategory(category: string): BasicValidationResult {
   const validCategories = ['structure', 'upkeep', 'play', 'default'];
 
@@ -215,9 +191,6 @@ export function validateCategory(category: string): BasicValidationResult {
   };
 }
 
-/**
- * Validate template name
- */
 export function validateTemplateName(name: string): ValidationResult {
   const sanitized = sanitizeInput(name);
 
@@ -244,42 +217,34 @@ export function validateTemplateName(name: string): ValidationResult {
   };
 }
 
-/**
- * Validate complete card data
- */
 export function validateCard(cardData: any): CardValidationResult {
   const errors: Record<string, string> = {};
   const sanitizedData: Record<string, any> = {};
 
-  // Validate title
   const titleValidation = validateTitle(cardData.title);
   if (!titleValidation.valid) {
     errors.title = titleValidation.error!;
   }
   sanitizedData.title = titleValidation.sanitized;
 
-  // Validate description
   const descriptionValidation = validateDescription(cardData.description);
   if (!descriptionValidation.valid) {
     errors.description = descriptionValidation.error!;
   }
   sanitizedData.description = descriptionValidation.sanitized;
 
-  // Validate duration
   const durationValidation = validateDuration(cardData.duration);
   if (!durationValidation.valid) {
     errors.duration = durationValidation.error!;
   }
   sanitizedData.duration = durationValidation.value;
 
-  // Validate recurrence type
   const recurrenceValidation = validateRecurrenceType(cardData.recurrenceType);
   if (!recurrenceValidation.valid) {
     errors.recurrenceType = recurrenceValidation.error!;
   }
   sanitizedData.recurrenceType = cardData.recurrenceType;
 
-  // Validate max uses if recurrence type is 'limited'
   if (cardData.recurrenceType === 'limited') {
     const maxUsesValidation = validateMaxUses(cardData.maxUses);
     if (!maxUsesValidation.valid) {
@@ -295,12 +260,9 @@ export function validateCard(cardData: any): CardValidationResult {
   };
 }
 
-/**
- * Validate loaded data structure from Firebase
- */
 export function validateLoadedData(data: any, expectedType: 'cards' | 'dailyDeck' | 'templates'): BasicValidationResult {
   if (!data) {
-    return { valid: true, error: null }; // Null/undefined is acceptable (no data saved)
+    return { valid: true, error: null }; // null/undefined is fine, just means no data saved yet
   }
 
   switch (expectedType) {
@@ -308,7 +270,6 @@ export function validateLoadedData(data: any, expectedType: 'cards' | 'dailyDeck
       if (typeof data !== 'object' || Array.isArray(data)) {
         return { valid: false, error: 'Cards data must be an object' };
       }
-      // Validate structure: { structure: [], upkeep: [], play: [], default: [] }
       const requiredKeys = ['structure', 'upkeep', 'play', 'default'];
       for (const key of requiredKeys) {
         if (!Array.isArray(data[key])) {

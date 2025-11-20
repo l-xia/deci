@@ -1,7 +1,3 @@
-/**
- * Template-related types
- */
-
 export interface Template {
   id: string;
   name: string;

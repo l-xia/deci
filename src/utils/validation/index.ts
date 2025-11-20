@@ -1,12 +1,6 @@
-/**
- * Validation utilities - Re-exports
- */
-
-// Input validation
 export { sanitizeInput } from './input';
 export type { BasicValidationResult } from './input';
 
-// Card validation
 export {
   validateTitle,
   validateDescription,

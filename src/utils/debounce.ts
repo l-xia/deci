@@ -1,8 +1,3 @@
-/**
- * Debounce utility - delays function execution until after wait milliseconds
- * have elapsed since the last time it was invoked.
- * Includes cancel and flush methods for proper cleanup.
- */
 export function debounce(func, wait) {
   let timeout;
   let isCancelled = false;
@@ -11,7 +6,7 @@ export function debounce(func, wait) {
   const debouncedFunction = function executedFunction(...args) {
     if (isCancelled) return;
 
-    lastArgs = args; // Save the most recent arguments
+    lastArgs = args;
 
     const later = () => {
       timeout = null;
@@ -24,7 +19,6 @@ export function debounce(func, wait) {
     timeout = setTimeout(later, wait);
   };
 
-  // Cancel pending execution and prevent future executions
   debouncedFunction.cancel = function() {
     clearTimeout(timeout);
     timeout = null;
@@ -32,7 +26,6 @@ export function debounce(func, wait) {
     isCancelled = true;
   };
 
-  // Execute immediately with the last pending arguments
   debouncedFunction.flush = function() {
     if (timeout) {
       clearTimeout(timeout);

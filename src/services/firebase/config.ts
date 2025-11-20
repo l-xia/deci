@@ -11,7 +11,6 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Check if all required config values are present
 const missingConfigs = Object.entries(firebaseConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
@@ -21,11 +20,8 @@ if (missingConfigs.length > 0) {
   throw new Error(`Firebase configuration incomplete. Missing: ${missingConfigs.join(', ')}`);
 }
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
 export const db = getFirestore(app);
 
-// Initialize Auth
 export const auth = getAuth(app);

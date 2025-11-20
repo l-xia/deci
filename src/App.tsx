@@ -1,8 +1,3 @@
-/**
- * Main App Component - Refactored to use Context API
- * Simplified from 422 lines to ~150 lines by extracting logic to hooks and context
- */
-
 import { useState, useCallback } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import CardStack from './components/CardStack';
@@ -18,7 +13,6 @@ function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
   const app = useApp();
 
-  // Destructure with composition pattern
   const { firebase, cards, dailyDeck, templates, dragAndDrop, posthog } = app;
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -201,12 +195,10 @@ function AuthenticatedApp() {
 function App() {
   const { currentUser } = useAuth();
 
-  // Show auth form if not logged in
   if (!currentUser) {
     return <AuthForm />;
   }
 
-  // Wrap authenticated app with AppProvider
   return (
     <AppProvider>
       <AuthenticatedApp />

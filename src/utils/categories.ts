@@ -1,7 +1,3 @@
-/**
- * Category utility functions
- */
-
 import type { CategoryData, CategoryColors, CategoryKey } from '../types';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_KEYS } from '../constants/categories';
 
