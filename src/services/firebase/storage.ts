@@ -1,40 +1,19 @@
-/**
- * Firebase Storage utility
- * Provides real-time syncing to Firestore with error handling, retry logic, and offline support
- */
-
-import { doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from './config';
 import { validateLoadedData } from '../../utils/validators';
-
-// Error types for better error handling
-export class FirebaseStorageError extends Error {
-  constructor(message, code, originalError = null) {
-    super(message);
-    this.name = 'FirebaseStorageError';
-    this.code = code;
-    this.originalError = originalError;
-  }
-}
+import { FirebaseStorageError, type StorageKey, type StorageResult } from './types';
+import { retryWithBackoff, createDataToSave } from './utils';
 
 class FirebaseStorageManager {
-  constructor() {
-    this.userId = null;
-    this.unsubscribers = {};
-    this.initialized = false;
-    this.offlinePersistenceEnabled = false;
-    this.retryAttempts = 3;
-    this.retryDelay = 1000; // ms
-    this.lastError = null;
-    this.pendingOperations = [];
-  }
+  private userId: string | null = null;
+  private unsubscribers: Record<string, () => void> = {};
+  private initialized: boolean = false;
 
-  /**
-   * Initialize Firebase with the authenticated user's ID
-   */
-  async initialize() {
+  private readonly RETRY_ATTEMPTS = 3;
+  private readonly RETRY_BASE_DELAY = 1000;
+
+  async initialize(): Promise<boolean> {
     try {
-      // Wait for auth state to be ready first
       const user = auth.currentUser;
       if (!user) {
         throw new FirebaseStorageError(
@@ -44,134 +23,87 @@ class FirebaseStorageManager {
       }
 
       this.userId = user.uid;
-
-      // Enable offline persistence (only call once)
-      if (!this.offlinePersistenceEnabled) {
-        try {
-          await enableIndexedDbPersistence(db);
-          this.offlinePersistenceEnabled = true;
-          console.log('Offline persistence enabled');
-        } catch (err) {
-          if (err.code === 'failed-precondition') {
-            // Multiple tabs open, persistence can only be enabled in one tab at a time
-            console.warn('Offline persistence failed: Multiple tabs open, will use memory cache');
-          } else if (err.code === 'unimplemented') {
-            // The current browser doesn't support persistence
-            console.warn('Offline persistence not supported by this browser, will use memory cache');
-          } else {
-            console.error('Error enabling offline persistence:', err);
-          }
-          // Continue initialization even if offline persistence fails
-        }
-      }
-
       this.initialized = true;
-      this.lastError = null;
       return true;
     } catch (error) {
       console.error('Error initializing Firebase:', error);
-      this.lastError = error instanceof FirebaseStorageError
-        ? error
-        : new FirebaseStorageError(
-            'Failed to initialize Firebase storage',
-            'INIT_ERROR',
-            error
-          );
       return false;
     }
   }
 
-  /**
-   * Retry a function with exponential backoff
-   */
-  async retryWithBackoff(fn, retries = this.retryAttempts) {
-    for (let i = 0; i < retries; i++) {
-      try {
-        return await fn();
-      } catch (error) {
-        if (i === retries - 1) throw error; // Last attempt failed
-        const delay = this.retryDelay * Math.pow(2, i); // Exponential backoff
-        console.warn(`Retry attempt ${i + 1}/${retries} after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+  private ensureUserIdSet(): void {
+    if (!this.userId) {
+      throw new Error('User ID is not set');
     }
   }
 
-  /**
-   * Save data to Firestore with retry logic
-   */
-  async save(key, data) {
+  async save(key: StorageKey, data: unknown): Promise<StorageResult> {
     if (!this.initialized) {
       const error = new FirebaseStorageError(
         'Cannot save data: Firebase not initialized',
         'NOT_INITIALIZED'
       );
       console.error(error.message);
-      this.lastError = error;
       return { success: false, error };
     }
 
     try {
-      // Use doc() with separate path segments instead of a string path
-      const docRef = doc(db, 'users', this.userId, 'data', key);
+      this.ensureUserIdSet();
+      const userId = this.userId!; // Safe after ensureUserIdSet()
 
-      const dataToSave = {
-        data: data,
-        savedAt: new Date().toISOString(),
-        version: '1.0.0',
-      };
+      const docRef = doc(db, 'users', userId, 'data', key);
+      const dataToSave = createDataToSave(data);
 
       console.log(`💾 Saving ${key} to Firebase...`, {
-        path: `users/${this.userId}/data/${key}`,
+        path: `users/${userId}/data/${key}`,
         dataSize: JSON.stringify(data).length
       });
 
-      await this.retryWithBackoff(async () => {
-        await setDoc(docRef, dataToSave);
-      });
+      await retryWithBackoff(
+        async () => await setDoc(docRef, dataToSave),
+        this.RETRY_ATTEMPTS,
+        this.RETRY_BASE_DELAY
+      );
 
       console.log(`✅ Successfully saved ${key} to Firebase`);
-      this.lastError = null;
       return { success: true, error: null };
     } catch (error) {
       console.error(`❌ Error saving ${key} to Firebase:`, error);
       const storageError = new FirebaseStorageError(
-        `Failed to save ${key} after ${this.retryAttempts} attempts`,
+        `Failed to save ${key} after ${this.RETRY_ATTEMPTS} attempts`,
         'SAVE_ERROR',
         error
       );
-      this.lastError = storageError;
       return { success: false, error: storageError };
     }
   }
 
-  /**
-   * Load data from Firestore with validation and retry logic
-   */
-  async load(key) {
+  async load(key: StorageKey): Promise<StorageResult> {
     if (!this.initialized) {
       const error = new FirebaseStorageError(
         'Cannot load data: Firebase not initialized',
         'NOT_INITIALIZED'
       );
       console.error(error.message);
-      this.lastError = error;
       return { success: false, data: null, error };
     }
 
     try {
-      // Use doc() with separate path segments instead of a string path
-      const docRef = doc(db, 'users', this.userId, 'data', key);
+      this.ensureUserIdSet();
+      const userId = this.userId!; // Safe after ensureUserIdSet()
 
-      const docSnap = await this.retryWithBackoff(async () => {
-        return await getDoc(docRef);
-      });
+      const docRef = doc(db, 'users', userId, 'data', key);
+
+      const docSnap = await retryWithBackoff(
+        async () => await getDoc(docRef),
+        this.RETRY_ATTEMPTS,
+        this.RETRY_BASE_DELAY
+      );
 
       if (docSnap.exists()) {
         const storedData = docSnap.data();
         const loadedData = storedData.data || null;
 
-        // Validate the loaded data structure
         const validation = validateLoadedData(loadedData, key);
         if (!validation.valid) {
           const error = new FirebaseStorageError(
@@ -179,70 +111,45 @@ class FirebaseStorageManager {
             'VALIDATION_ERROR'
           );
           console.error(error.message);
-          this.lastError = error;
           return { success: false, data: null, error };
         }
 
-        this.lastError = null;
         return { success: true, data: loadedData, error: null };
       }
 
-      // No data found is not an error
-      this.lastError = null;
       return { success: true, data: null, error: null };
     } catch (error) {
       console.error(`Error loading ${key} from Firebase:`, error);
       const storageError = new FirebaseStorageError(
-        `Failed to load ${key} after ${this.retryAttempts} attempts`,
+        `Failed to load ${key} after ${this.RETRY_ATTEMPTS} attempts`,
         'LOAD_ERROR',
         error
       );
-      this.lastError = storageError;
       return { success: false, data: null, error: storageError };
     }
   }
 
-  /**
-   * Get the last error that occurred
-   */
-  getLastError() {
-    return this.lastError;
-  }
-
-  /**
-   * Clear the last error
-   */
-  clearLastError() {
-    this.lastError = null;
-  }
-
-  /**
-   * Subscribe to real-time updates for a specific key
-   */
-  subscribe(key, callback) {
-    if (!this.initialized) {
-      console.error('Firebase not initialized');
+  subscribe(key: StorageKey, callback: (data: unknown) => void): () => void {
+    if (!this.initialized || !this.userId) {
+      console.error('Firebase not initialized or user ID not set');
       return () => {};
     }
 
     try {
-      // Use doc() with separate path segments instead of a string path
       const docRef = doc(db, 'users', this.userId, 'data', key);
 
-      const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const storedData = docSnap.data();
-          callback(storedData.data);
-        } else {
-          callback(null);
+      const unsubscribe = onSnapshot(
+        docRef,
+        (docSnap) => {
+          const data = docSnap.exists() ? docSnap.data().data : null;
+          callback(data);
+        },
+        (error) => {
+          console.error(`Error subscribing to ${key}:`, error);
         }
-      }, (error) => {
-        console.error(`Error subscribing to ${key}:`, error);
-      });
+      );
 
-      // Store the unsubscriber
       this.unsubscribers[key] = unsubscribe;
-
       return unsubscribe;
     } catch (error) {
       console.error(`Error setting up subscription for ${key}:`, error);
@@ -250,36 +157,24 @@ class FirebaseStorageManager {
     }
   }
 
-  /**
-   * Unsubscribe from a specific key
-   */
-  unsubscribe(key) {
+  unsubscribe(key: StorageKey): void {
     if (this.unsubscribers[key]) {
       this.unsubscribers[key]();
       delete this.unsubscribers[key];
     }
   }
 
-  /**
-   * Unsubscribe from all listeners
-   */
-  unsubscribeAll() {
+  unsubscribeAll(): void {
     Object.keys(this.unsubscribers).forEach(key => {
-      this.unsubscribe(key);
+      this.unsubscribe(key as StorageKey);
     });
   }
 
-  /**
-   * Check if using Firebase storage (always true for this implementation)
-   */
-  isUsingFirebase() {
+  isUsingFirebase(): boolean {
     return this.initialized;
   }
 
-  /**
-   * Get current user ID
-   */
-  getUserId() {
+  getUserId(): string | null {
     return this.userId;
   }
 }

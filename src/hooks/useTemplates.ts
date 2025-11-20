@@ -1,26 +1,27 @@
-/**
- * Custom hook for template management
- */
-
 import { useState, useCallback } from 'react';
+import type { PostHog } from 'posthog-js';
+import type { Template, Card, CategoryKey } from '../types';
 
-export function useTemplates(initialTemplates = []) {
-  const [templates, setTemplates] = useState(initialTemplates);
+function generateTemplateId(): string {
+  return `template-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
 
-  // Save current daily deck as a template
-  const saveTemplate = useCallback((name, dailyDeck, posthog) => {
-    const newTemplate = {
-      id: `template-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+export function useTemplates(initialTemplates: Template[] = []) {
+  const [templates, setTemplates] = useState<Template[]>(initialTemplates);
+
+  const saveTemplate = useCallback((name: string, dailyDeck: Card[], posthog: PostHog | null) => {
+    const newTemplate: Template = {
+      id: generateTemplateId(),
       name,
-      cards: dailyDeck.map((card) => ({
+      cards: dailyDeck.map(card => ({
         id: card.id,
-        sourceCategory: card.sourceCategory,
+        sourceCategory: (card.sourceCategory || 'default') as CategoryKey,
       })),
       createdAt: new Date().toISOString(),
       cardCount: dailyDeck.length,
     };
 
-    setTemplates((prev) => [...prev, newTemplate]);
+    setTemplates(prev => [...prev, newTemplate]);
 
     posthog?.capture('template_created', {
       template_id: newTemplate.id,
@@ -30,24 +31,26 @@ export function useTemplates(initialTemplates = []) {
     return newTemplate;
   }, []);
 
-  // Delete a template
-  const deleteTemplate = useCallback((templateId, posthog) => {
-    setTemplates((prev) => {
-      const template = prev.find((t) => t.id === templateId);
+  const deleteTemplate = useCallback((templateId: string, posthog: PostHog | null) => {
+    setTemplates(prev => {
+      const template = prev.find(t => t.id === templateId);
 
       posthog?.capture('template_deleted', {
         template_id: templateId,
         card_count: template?.cardCount || 0,
       });
 
-      return prev.filter((t) => t.id !== templateId);
+      return prev.filter(t => t.id !== templateId);
     });
   }, []);
 
-  // Update a template (rename)
-  const updateTemplate = useCallback((templateId, updates, posthog) => {
-    setTemplates((prev) =>
-      prev.map((template) =>
+  const updateTemplate = useCallback((
+    templateId: string,
+    updates: Partial<Omit<Template, 'id' | 'createdAt'>>,
+    posthog: PostHog | null
+  ) => {
+    setTemplates(prev =>
+      prev.map(template =>
         template.id === templateId
           ? { ...template, ...updates, updatedAt: new Date().toISOString() }
           : template
@@ -60,13 +63,11 @@ export function useTemplates(initialTemplates = []) {
     });
   }, []);
 
-  // Get a template by ID
-  const getTemplate = useCallback((templateId) => {
-    return templates.find((t) => t.id === templateId);
+  const getTemplate = useCallback((templateId: string): Template | undefined => {
+    return templates.find(t => t.id === templateId);
   }, [templates]);
 
-  // Get templates sorted by creation date
-  const getTemplatesSorted = useCallback((ascending = false) => {
+  const getTemplatesSorted = useCallback((ascending: boolean = false): Template[] => {
     return [...templates].sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();

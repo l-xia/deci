@@ -1,19 +1,18 @@
-/**
- * Custom hook for Firebase initialization and data persistence
- */
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { PostHog } from 'posthog-js';
 import { firebaseStorage } from '../services/firebase/storage';
+import { FirebaseStorageError, type StorageKey } from '../services/firebase/types';
 import { debounce } from '../utils/debounce';
 import { DEBOUNCE_DELAY, STORAGE_KEYS } from '../constants';
 import { auth } from '../services/firebase';
 
-export function useFirebase(posthog) {
-  const [initialized, setInitialized] = useState(false);
-  const [saveStatus, setSaveStatus] = useState('saved'); // 'saving', 'saved', 'error'
-  const [saveError, setSaveError] = useState(null);
+type SaveStatus = 'saving' | 'saved' | 'error';
 
-  // Initialize Firebase only after user is authenticated
+export function useFirebase(posthog: PostHog | null) {
+  const [initialized, setInitialized] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+  const [saveError, setSaveError] = useState<FirebaseStorageError | null>(null);
+
   useEffect(() => {
     const initFirebase = async () => {
       try {
@@ -23,26 +22,22 @@ export function useFirebase(posthog) {
           setInitialized(true);
           posthog?.capture('firebase_initialized', {
             user_id: firebaseStorage.getUserId(),
-            offline_persistence_enabled: firebaseStorage.offlinePersistenceEnabled,
           });
         } else {
-          const error = firebaseStorage.getLastError();
-          console.error('Failed to initialize Firebase:', error);
-          posthog?.capture('firebase_init_error', { error: error?.message });
+          console.error('Failed to initialize Firebase');
+          posthog?.capture('firebase_init_error');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Unexpected error during Firebase initialization:', error);
-        posthog?.capture('firebase_init_error_unexpected', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        posthog?.capture('firebase_init_error_unexpected', { error: errorMessage });
       }
     };
 
-    // Wait for auth state to be ready before initializing storage
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        // User is authenticated, now initialize Firebase storage
         initFirebase();
       } else {
-        // User is not authenticated, reset initialization
         setInitialized(false);
       }
     });
@@ -50,9 +45,8 @@ export function useFirebase(posthog) {
     return unsubscribe;
   }, [posthog]);
 
-  // Create save function with error handling
-  const createSaveFunction = useCallback((key) => {
-    return debounce(async (data) => {
+  const createSaveFunction = useCallback((key: StorageKey) => {
+    return debounce(async (data: unknown) => {
       setSaveStatus('saving');
       const result = await firebaseStorage.save(key, data);
       if (result.success) {
@@ -71,23 +65,21 @@ export function useFirebase(posthog) {
     }, DEBOUNCE_DELAY.SAVE);
   }, [posthog]);
 
-  // Create debounced save functions for each storage key
   const debouncedSaveCards = useMemo(
-    () => createSaveFunction(STORAGE_KEYS.CARDS),
+    () => createSaveFunction(STORAGE_KEYS.CARDS as StorageKey),
     [createSaveFunction]
   );
 
   const debouncedSaveDailyDeck = useMemo(
-    () => createSaveFunction(STORAGE_KEYS.DAILY_DECK),
+    () => createSaveFunction(STORAGE_KEYS.DAILY_DECK as StorageKey),
     [createSaveFunction]
   );
 
   const debouncedSaveTemplates = useMemo(
-    () => createSaveFunction(STORAGE_KEYS.TEMPLATES),
+    () => createSaveFunction(STORAGE_KEYS.TEMPLATES as StorageKey),
     [createSaveFunction]
   );
 
-  // Load data from Firebase
   const loadData = useCallback(async () => {
     if (!initialized) {
       return { cards: null, dailyDeck: null, templates: null };
@@ -95,12 +87,11 @@ export function useFirebase(posthog) {
 
     try {
       const [cardsResult, dailyDeckResult, templatesResult] = await Promise.all([
-        firebaseStorage.load(STORAGE_KEYS.CARDS),
-        firebaseStorage.load(STORAGE_KEYS.DAILY_DECK),
-        firebaseStorage.load(STORAGE_KEYS.TEMPLATES),
+        firebaseStorage.load(STORAGE_KEYS.CARDS as StorageKey),
+        firebaseStorage.load(STORAGE_KEYS.DAILY_DECK as StorageKey),
+        firebaseStorage.load(STORAGE_KEYS.TEMPLATES as StorageKey),
       ]);
 
-      // Log any load errors
       if (!cardsResult.success) {
         console.error('Failed to load cards:', cardsResult.error);
         posthog?.capture('data_load_error', { key: 'cards', error: cardsResult.error?.message });
@@ -120,15 +111,15 @@ export function useFirebase(posthog) {
         templates: templatesResult.data,
         hasData: !!(cardsResult.data || dailyDeckResult.data || templatesResult.data),
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error loading data from Firebase:', error);
-      posthog?.capture('data_load_error_unexpected', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      posthog?.capture('data_load_error_unexpected', { error: errorMessage });
       return { cards: null, dailyDeck: null, templates: null };
     }
   }, [initialized, posthog]);
 
-  // Retry save operation
-  const retrySave = useCallback((cards, dailyDeck, templates) => {
+  const retrySave = useCallback((cards: unknown, dailyDeck: unknown, templates: unknown) => {
     if (cards) debouncedSaveCards(cards);
     if (dailyDeck) debouncedSaveDailyDeck(dailyDeck);
     if (templates) debouncedSaveTemplates(templates);
@@ -146,7 +137,6 @@ export function useFirebase(posthog) {
     }
   }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       debouncedSaveCards?.cancel?.();
@@ -166,7 +156,6 @@ export function useFirebase(posthog) {
     retrySave,
     flushPendingSaves,
     isUsingFirebase: firebaseStorage.isUsingFirebase(),
-    offlinePersistenceEnabled: firebaseStorage.offlinePersistenceEnabled,
     getUserId: () => firebaseStorage.getUserId(),
   };
 }

@@ -1,15 +1,36 @@
-/**
- * Firebase debugging utilities
- */
-
 import { collection, getDocs, query, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from './config';
+
+interface FirebaseErrorType {
+  code: string;
+  message: string;
+}
+
+// Type guard to check if error is a Firebase error
+function isFirebaseError(error: unknown): error is FirebaseErrorType {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    'message' in error &&
+    typeof (error as FirebaseErrorType).code === 'string' &&
+    typeof (error as FirebaseErrorType).message === 'string'
+  );
+}
+
+// Extend Window interface for development
+declare global {
+  interface Window {
+    testFirebaseWrite: () => Promise<void>;
+    debugFirebaseConnection: () => Promise<void>;
+    checkSavedData: () => Promise<void>;
+  }
+}
 
 export async function debugFirebaseConnection() {
   console.group('🔍 Firebase Debug Info');
 
   try {
-    // Check auth state
     const user = auth.currentUser;
     console.log('Auth State:', {
       isAuthenticated: !!user,
@@ -24,13 +45,11 @@ export async function debugFirebaseConnection() {
       return;
     }
 
-    // Try to read from Firestore
     console.log('Attempting to read user data...');
     const userDataPath = `users/${user.uid}/data`;
     console.log('Path:', userDataPath);
 
     try {
-      // Try to list all documents in the data subcollection
       const dataRef = collection(db, 'users', user.uid, 'data');
       const snapshot = await getDocs(query(dataRef));
 
@@ -47,18 +66,21 @@ export async function debugFirebaseConnection() {
       } else {
         console.log('📭 No documents found (this is normal for new users)');
       }
-    } catch (firestoreError) {
-      console.error('❌ Firestore Error:', {
-        code: firestoreError.code,
-        message: firestoreError.message,
-        details: firestoreError,
-      });
+    } catch (firestoreError: unknown) {
+      if (isFirebaseError(firestoreError)) {
+        console.error('❌ Firestore Error:', {
+          code: firestoreError.code,
+          message: firestoreError.message,
+          details: firestoreError,
+        });
 
-      // Check for common permission errors
-      if (firestoreError.code === 'permission-denied') {
-        console.error('🚫 Permission denied - check Firestore rules');
-        console.log('Expected path:', userDataPath);
-        console.log('User ID:', user.uid);
+        if (firestoreError.code === 'permission-denied') {
+          console.error('🚫 Permission denied - check Firestore rules');
+          console.log('Expected path:', userDataPath);
+          console.log('User ID:', user.uid);
+        }
+      } else {
+        console.error('❌ Firestore Error:', firestoreError);
       }
     }
   } catch (error) {
@@ -89,7 +111,6 @@ export async function testFirebaseWrite() {
     await setDoc(testRef, { data: testData });
     console.log('✅ Write successful');
 
-    // Try to read it back
     console.log('Reading back test data...');
     const docSnap = await getDoc(testRef);
     if (docSnap.exists()) {
@@ -97,10 +118,14 @@ export async function testFirebaseWrite() {
     } else {
       console.error('❌ Document does not exist after write');
     }
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
+  } catch (error: unknown) {
+    if (isFirebaseError(error)) {
+      console.error('❌ Test failed:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+    } else {
+      console.error('❌ Test failed:', error);
+    }
   }
 
   console.groupEnd();
@@ -138,7 +163,6 @@ export async function checkSavedData() {
   console.groupEnd();
 }
 
-// Make test function available globally for manual testing
 if (import.meta.env.DEV) {
   window.testFirebaseWrite = testFirebaseWrite;
   window.debugFirebaseConnection = debugFirebaseConnection;

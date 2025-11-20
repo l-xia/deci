@@ -8,6 +8,7 @@ import { AppProvider, useApp } from './context';
 import { useAuth } from './context/AuthContext';
 import { CATEGORIES } from './constants';
 import deciLogo from './assets/deci_logo.svg';
+import type { Card, CategoryKey } from './types';
 
 function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
@@ -16,10 +17,10 @@ function AuthenticatedApp() {
   const { firebase, cards, dailyDeck, templates, dragAndDrop, posthog } = app;
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingCard, setEditingCard] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
 
-  const openModal = useCallback((category: string, card: any = null) => {
+  const openModal = useCallback((category: CategoryKey, card: Card | null = null) => {
     setSelectedCategory(category);
     setEditingCard(card);
     setModalOpen(true);
@@ -31,7 +32,9 @@ function AuthenticatedApp() {
     setSelectedCategory(null);
   }, []);
 
-  const handleSaveCard = useCallback((cardData: any) => {
+  const handleSaveCard = useCallback((cardData: Partial<Card>) => {
+    if (!selectedCategory) return;
+
     if (editingCard) {
       cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
     } else {
@@ -40,7 +43,7 @@ function AuthenticatedApp() {
     closeModal();
   }, [editingCard, selectedCategory, cards, posthog, closeModal]);
 
-  const handleDeleteCard = useCallback((category: string, cardId: string) => {
+  const handleDeleteCard = useCallback((category: CategoryKey, cardId: string) => {
     if (confirm('Delete this card? This will also remove it from your daily deck.')) {
       cards.deleteCard(category, cardId, posthog);
       dailyDeck.removeCardById(cardId, posthog);
@@ -62,7 +65,21 @@ function AuthenticatedApp() {
     templates.deleteTemplate(templateId, posthog);
   }, [templates, posthog]);
 
-  // Show loading state while initializing
+  const handleUpdateCard = useCallback((index: number, updates: any) => {
+    const updatedDeck = dailyDeck.dailyDeck.map((card, i) =>
+      i === index ? { ...card, ...updates } : card
+    );
+    dailyDeck.setDailyDeck(updatedDeck);
+
+    if (updates.completed && updates.timeSpent) {
+      posthog?.capture('card_completed', {
+        card_id: dailyDeck.dailyDeck[index]?.id,
+        time_spent: updates.timeSpent,
+        suggested_duration: dailyDeck.dailyDeck[index]?.duration,
+      });
+    }
+  }, [dailyDeck, posthog]);
+
   if (!firebase.initialized) {
     return (
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -83,7 +100,7 @@ function AuthenticatedApp() {
               <img src={deciLogo} alt="Deci" className="h-12" />
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">{currentUser.email}</span>
+                <span className="text-sm text-gray-600">{currentUser?.email}</span>
                 <button
                   onClick={logout}
                   className="text-sm text-gray-500 hover:text-gray-700 underline"
@@ -115,9 +132,6 @@ function AuthenticatedApp() {
                   {firebase.saveStatus === 'saving' && 'Syncing to cloud...'}
                   {firebase.saveStatus === 'saved' && 'Cloud sync enabled'}
                   {firebase.saveStatus === 'error' && 'Sync failed'}
-                  {firebase.offlinePersistenceEnabled && firebase.saveStatus === 'saved' && (
-                    <span className="text-gray-500"> • Offline mode active</span>
-                  )}
                 </span>
                 {firebase.saveStatus === 'error' && (
                   <button
@@ -161,20 +175,7 @@ function AuthenticatedApp() {
                 onSaveTemplate={handleSaveTemplate}
                 onLoadTemplate={handleLoadTemplate}
                 onDeleteTemplate={handleDeleteTemplate}
-                onUpdateCard={useCallback((index: number, updates: any) => {
-                  const updatedDeck = dailyDeck.dailyDeck.map((card, i) =>
-                    i === index ? { ...card, ...updates } : card
-                  );
-                  dailyDeck.setDailyDeck(updatedDeck);
-
-                  if (updates.completed && updates.timeSpent) {
-                    posthog?.capture('card_completed', {
-                      card_id: dailyDeck.dailyDeck[index]?.id,
-                      time_spent: updates.timeSpent,
-                      suggested_duration: dailyDeck.dailyDeck[index]?.duration,
-                    });
-                  }
-                }, [dailyDeck, posthog])}
+                onUpdateCard={handleUpdateCard}
               />
             </div>
           </div>

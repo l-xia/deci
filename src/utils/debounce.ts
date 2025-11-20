@@ -1,9 +1,18 @@
-export function debounce(func, wait) {
-  let timeout;
-  let isCancelled = false;
-  let lastArgs = null;
+type DebouncedFunction<T extends (...args: any[]) => any> = {
+  (...args: Parameters<T>): void;
+  cancel: () => void;
+  flush: () => void;
+};
 
-  const debouncedFunction = function executedFunction(...args) {
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): DebouncedFunction<T> {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let isCancelled = false;
+  let lastArgs: Parameters<T> | null = null;
+
+  const debouncedFunction = function executedFunction(...args: Parameters<T>): void {
     if (isCancelled) return;
 
     lastArgs = args;
@@ -15,19 +24,23 @@ export function debounce(func, wait) {
       }
     };
 
-    clearTimeout(timeout);
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
     timeout = setTimeout(later, wait);
   };
 
-  debouncedFunction.cancel = function() {
-    clearTimeout(timeout);
+  debouncedFunction.cancel = function(): void {
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
     timeout = null;
     lastArgs = null;
     isCancelled = true;
   };
 
-  debouncedFunction.flush = function() {
-    if (timeout) {
+  debouncedFunction.flush = function(): void {
+    if (timeout !== null) {
       clearTimeout(timeout);
       timeout = null;
     }
@@ -37,5 +50,5 @@ export function debounce(func, wait) {
     }
   };
 
-  return debouncedFunction;
+  return debouncedFunction as DebouncedFunction<T>;
 }
