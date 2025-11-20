@@ -1,13 +1,23 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  User
 } from 'firebase/auth';
 import { auth } from '../firebase';
 
-const AuthContext = createContext();
+interface AuthContextType {
+  currentUser: User | null;
+  signup: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
+  error: string | null;
+  setError: (error: string | null) => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -17,13 +27,17 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Helper to format Firebase errors
-  const formatFirebaseError = (err) => {
+  const formatFirebaseError = (err: any): string => {
     console.error('Firebase Auth Error:', err);
 
     // Network-related errors

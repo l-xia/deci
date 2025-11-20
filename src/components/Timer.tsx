@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
+import type { Card } from '../types';
 
-function Timer({ card, onComplete }) {
+interface TimerProps {
+  card: Card;
+  onComplete: (timeSpent: number) => void;
+}
+
+function Timer({ card, onComplete }: TimerProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const intervalRef = useRef(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isRunning) {
@@ -42,7 +47,7 @@ function Timer({ card, onComplete }) {
     setSeconds(0);
   };
 
-  const formatTime = (totalSeconds) => {
+  const formatTime = (totalSeconds: number): string => {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins}:${String(secs).padStart(2, '0')}`;

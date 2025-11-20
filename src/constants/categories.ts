@@ -2,14 +2,18 @@
  * Category definitions for card organization
  */
 
+import type { CategoryData, CategoryColors } from '../types';
+
 export const CATEGORY_KEYS = {
   STRUCTURE: 'structure',
   UPKEEP: 'upkeep',
   PLAY: 'play',
   DEFAULT: 'default',
-};
+} as const;
 
-export const CATEGORIES = {
+export type CategoryKey = typeof CATEGORY_KEYS[keyof typeof CATEGORY_KEYS];
+
+export const CATEGORIES: Record<CategoryKey, CategoryData> = {
   [CATEGORY_KEYS.STRUCTURE]: {
     name: 'Structure',
     color: 'bg-green-100 border-green-300',
@@ -32,7 +36,7 @@ export const CATEGORIES = {
   },
 };
 
-export const CATEGORY_COLORS = {
+export const CATEGORY_COLORS: Record<CategoryKey, CategoryColors> = {
   [CATEGORY_KEYS.STRUCTURE]: {
     border: 'border-green-300',
     borderHover: 'hover:border-green-400',
@@ -74,20 +78,20 @@ export const CATEGORY_COLORS = {
 /**
  * Get category color classes by key
  */
-export function getCategoryColors(categoryKey) {
-  return CATEGORY_COLORS[categoryKey] || CATEGORY_COLORS[CATEGORY_KEYS.DEFAULT];
+export function getCategoryColors(categoryKey: string): CategoryColors {
+  return CATEGORY_COLORS[categoryKey as CategoryKey] || CATEGORY_COLORS[CATEGORY_KEYS.DEFAULT];
 }
 
 /**
  * Get category info by key
  */
-export function getCategory(categoryKey) {
-  return CATEGORIES[categoryKey] || CATEGORIES[CATEGORY_KEYS.DEFAULT];
+export function getCategory(categoryKey: string): CategoryData {
+  return CATEGORIES[categoryKey as CategoryKey] || CATEGORIES[CATEGORY_KEYS.DEFAULT];
 }
 
 /**
  * Check if a category key is valid
  */
-export function isValidCategory(categoryKey) {
-  return Object.values(CATEGORY_KEYS).includes(categoryKey);
+export function isValidCategory(categoryKey: string): categoryKey is CategoryKey {
+  return Object.values(CATEGORY_KEYS).includes(categoryKey as CategoryKey);
 }

@@ -108,7 +108,7 @@ class FirebaseStorageManager {
       );
       console.error(error.message);
       this.lastError = error;
-      throw error;
+      return { success: false, error };
     }
 
     try {
