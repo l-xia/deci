@@ -8,7 +8,7 @@ import { AppProvider, useApp } from './context';
 import { useAuth } from './context/AuthContext';
 import { CATEGORIES } from './constants';
 import deciLogo from './assets/deci_logo.svg';
-import type { Card, CategoryKey } from './types';
+import type { Card, CategoryKey, CardsByCategory, Template } from './types';
 
 function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
@@ -39,19 +39,16 @@ function AuthenticatedApp() {
 
   const handleSaveCard = useCallback((cardData: Partial<Card>) => {
     if (editingDailyDeckIndex !== null) {
-      // Editing a card in the daily deck
-      const updatedCard = { ...dailyDeck.dailyDeck[editingDailyDeckIndex], ...cardData };
+      const updatedCard = { ...dailyDeck.dailyDeck[editingDailyDeckIndex], ...cardData } as Card;
       const updatedDeck = [...dailyDeck.dailyDeck];
       updatedDeck[editingDailyDeckIndex] = updatedCard;
       dailyDeck.setDailyDeck(updatedDeck);
 
-      // Also update in the source cards
       const sourceCategory = updatedCard.sourceCategory;
-      if (sourceCategory) {
+      if (sourceCategory && (sourceCategory === 'structure' || sourceCategory === 'upkeep' || sourceCategory === 'play' || sourceCategory === 'default')) {
         cards.updateCard(sourceCategory, updatedCard.id, cardData, posthog);
       }
     } else if (selectedCategory) {
-      // Editing/creating a card in a stack
       if (editingCard) {
         cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
       } else {
@@ -84,17 +81,42 @@ function AuthenticatedApp() {
   }, [templates, posthog]);
 
   const handleUpdateCard = useCallback((index: number, updates: Partial<Card>) => {
-    const updatedDeck = dailyDeck.dailyDeck.map((card, i) =>
-      i === index ? { ...card, ...updates } : card
-    );
-    dailyDeck.setDailyDeck(updatedDeck);
+    const card = dailyDeck.dailyDeck[index];
+    if (!card) return;
 
-    if (updates.completed && updates.timeSpent !== undefined) {
+    const updatedCard = { ...card, ...updates };
+
+    // If marking as complete, reorder the deck
+    if (updates.completed && !card.completed) {
+      const newDeck = [...dailyDeck.dailyDeck];
+      newDeck.splice(index, 1);
+
+      // Find the position after the last completed card
+      const lastCompletedIndex = newDeck.findIndex(c => !c.completed);
+      const insertIndex = lastCompletedIndex === -1 ? newDeck.length : lastCompletedIndex;
+
+      newDeck.splice(insertIndex, 0, updatedCard);
+      dailyDeck.setDailyDeck(newDeck);
+
       posthog?.capture('card_completed', {
-        card_id: dailyDeck.dailyDeck[index]?.id,
+        card_id: card.id,
         time_spent: updates.timeSpent,
-        suggested_duration: dailyDeck.dailyDeck[index]?.duration,
+        suggested_duration: card.duration,
       });
+
+      // Scroll to the next incomplete card after a short delay
+      setTimeout(() => {
+        const nextIncompleteElement = document.querySelector('[data-card-incomplete="true"]');
+        if (nextIncompleteElement) {
+          nextIncompleteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    } else {
+      // Regular update without reordering
+      const updatedDeck = dailyDeck.dailyDeck.map((c, i) =>
+        i === index ? updatedCard : c
+      );
+      dailyDeck.setDailyDeck(updatedDeck);
     }
   }, [dailyDeck, posthog]);
 
@@ -108,7 +130,10 @@ function AuthenticatedApp() {
   }, [dailyDeck.dailyDeck]);
 
   const handleDeleteDailyDeckCard = useCallback((index: number) => {
-    dailyDeck.removeCardById(dailyDeck.dailyDeck[index].id, posthog);
+    const card = dailyDeck.dailyDeck[index];
+    if (card) {
+      dailyDeck.removeCardById(card.id, posthog);
+    }
   }, [dailyDeck, posthog]);
 
   const handleRefresh = useCallback(async () => {
@@ -117,15 +142,24 @@ function AuthenticatedApp() {
     setIsRefreshing(true);
     try {
       const result = await firebase.loadData();
+      const loadedCards = result.cards as CardsByCategory | null;
+      const loadedDailyDeck = result.dailyDeck as Card[] | null;
+      const loadedTemplates = result.templates as Template[] | null;
 
-      if (result.cards) cards.setCards(result.cards);
-      if (result.dailyDeck) dailyDeck.setDailyDeck(result.dailyDeck);
-      if (result.templates) templates.setTemplates(result.templates);
+      if (loadedCards) {
+        cards.setCards(loadedCards);
+      }
+      if (loadedDailyDeck) {
+        dailyDeck.setDailyDeck(loadedDailyDeck);
+      }
+      if (loadedTemplates) {
+        templates.setTemplates(loadedTemplates);
+      }
 
       posthog?.capture('data_refreshed', {
-        cards_count: result.cards ? Object.values(result.cards).flat().length : 0,
-        daily_deck_count: result.dailyDeck?.length || 0,
-        templates_count: result.templates?.length || 0,
+        cards_count: loadedCards ? Object.values(loadedCards).flat().length : 0,
+        daily_deck_count: loadedDailyDeck?.length || 0,
+        templates_count: loadedTemplates?.length || 0,
       });
     } catch (error) {
       console.error('Failed to refresh data:', error);
@@ -151,30 +185,77 @@ function AuthenticatedApp() {
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex flex-col">
         <div className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col">
           <header className="mb-6 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between">
               <img src={deciLogo} alt="Deci" className="h-12" />
 
               <div className="flex items-center gap-3">
                 {firebase.isUsingFirebase && (
                   <button
                     onClick={handleRefresh}
-                    disabled={isRefreshing}
-                    className="p-2 text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Refresh data from cloud"
+                    disabled={isRefreshing || firebase.saveStatus === 'saving'}
+                    className={`flex items-center gap-2 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 underline underline-offset-4 ${
+                      firebase.saveStatus === 'saving' ? 'decoration-blue-500 text-blue-500' :
+                      firebase.saveStatus === 'saved' ? 'decoration-green-600 text-green-600' :
+                      firebase.saveStatus === 'error' ? 'decoration-red-600 text-red-600' :
+                      'decoration-gray-400 text-gray-600'
+                    }`}
+                    title={isRefreshing ? 'Refreshing...' : 'Refresh data from cloud'}
                   >
-                    <svg
-                      className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
+                    {firebase.saveStatus === 'saving' && (
+                      <svg className="animate-spin h-3 w-3 text-blue-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {firebase.saveStatus === 'saved' && (
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {firebase.saveStatus === 'error' && (
+                      <svg className="w-3 h-3 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {!firebase.saveStatus && (
+                      <svg
+                        className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                    )}
+                    <span className={
+                      firebase.saveStatus === 'saving' ? 'text-blue-500' :
+                      firebase.saveStatus === 'saved' ? 'text-green-600' :
+                      firebase.saveStatus === 'error' ? 'text-red-600' :
+                      'text-gray-600'
+                    }>
+                      {isRefreshing ? 'Refreshing...' :
+                       firebase.saveStatus === 'saving' ? 'Syncing...' :
+                       firebase.saveStatus === 'saved' ? 'Synced' :
+                       firebase.saveStatus === 'error' ? 'Sync error' :
+                       'Cloud'}
+                    </span>
+                    {firebase.saveStatus === 'error' && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          firebase.retrySave(cards.cards, dailyDeck.dailyDeck, templates.templates);
+                        }}
+                        className="text-red-600 hover:underline"
+                        aria-label="Retry saving data"
+                      >
+                        (retry)
+                      </span>
+                    )}
                   </button>
                 )}
 
@@ -216,41 +297,6 @@ function AuthenticatedApp() {
                 </div>
               </div>
             </div>
-
-            {firebase.isUsingFirebase && (
-              <div className="text-xs flex items-center gap-1.5">
-                {firebase.saveStatus === 'saving' && (
-                  <svg className="animate-spin h-3 w-3 text-blue-500" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                {firebase.saveStatus === 'saved' && (
-                  <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-                {firebase.saveStatus === 'error' && (
-                  <svg className="w-3 h-3 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                )}
-                <span className={firebase.saveStatus === 'saving' ? 'text-blue-500' : firebase.saveStatus === 'saved' ? 'text-gray-600' : firebase.saveStatus === 'error' ? 'text-red-600' : 'text-gray-600'}>
-                  {firebase.saveStatus === 'saving' && 'Syncing to cloud...'}
-                  {firebase.saveStatus === 'saved' && 'Cloud sync enabled'}
-                  {firebase.saveStatus === 'error' && 'Sync failed'}
-                </span>
-                {firebase.saveStatus === 'error' && (
-                  <button
-                    onClick={() => firebase.retrySave(cards.cards, dailyDeck.dailyDeck, templates.templates)}
-                    className="underline hover:no-underline ml-1 text-red-600"
-                    aria-label="Retry saving data"
-                  >
-                    Retry
-                  </button>
-                )}
-              </div>
-            )}
           </header>
 
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">

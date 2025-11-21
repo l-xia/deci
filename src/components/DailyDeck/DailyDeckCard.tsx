@@ -1,5 +1,4 @@
 import { Draggable } from '@hello-pangea/dnd';
-import { useState, useEffect } from 'react';
 import type { Card } from '../../types';
 import Timer from '../Timer';
 import { getCategoryColors } from '../../utils/categories';
@@ -9,25 +8,19 @@ interface DailyDeckCardProps {
   card: Card;
   index: number;
   isFirstIncomplete: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
   onEditCard: (index: number) => void;
   onDeleteCard: (index: number) => void;
   onDoubleClick: (index: number) => void;
 }
 
-function DailyDeckCard({ card, index, isFirstIncomplete, onUpdateCard, onEditCard, onDeleteCard, onDoubleClick }: DailyDeckCardProps) {
-  const [isExpanded, setIsExpanded] = useState(!card.completed);
+function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExpanded, onUpdateCard, onEditCard, onDeleteCard, onDoubleClick }: DailyDeckCardProps) {
+  const isFirstCard = isFirstIncomplete && !card.completed;
   const colors = getCategoryColors(card.sourceCategory || 'default');
   const borderColor = colors.border;
   const highlightColor = colors.highlight;
-
-  const isFirstCard = isFirstIncomplete && !card.completed;
-
-  useEffect(() => {
-    if (isFirstCard && card.completed === false) {
-      setIsExpanded(true);
-    }
-  }, [isFirstCard, card.completed]);
 
   const handleMarkComplete = () => {
     onUpdateCard(index, {
@@ -35,12 +28,15 @@ function DailyDeckCard({ card, index, isFirstIncomplete, onUpdateCard, onEditCar
       completedAt: new Date().toISOString(),
       timeSpent: 0,
     });
-    setIsExpanded(false);
+    // Collapse after marking complete
+    if (isExpanded) {
+      onToggleExpanded();
+    }
   };
 
   const handleToggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsExpanded(!isExpanded);
+    onToggleExpanded();
   };
 
   return (
@@ -51,6 +47,7 @@ function DailyDeckCard({ card, index, isFirstIncomplete, onUpdateCard, onEditCar
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onDoubleClick={() => !snapshot.isDragging && onDoubleClick(index)}
+          data-card-incomplete={!card.completed}
           className={`border-2 rounded-md shadow-lg transition-all mb-3 ${
             card.completed
               ? 'bg-gray-50 border-gray-300 opacity-60'
@@ -167,7 +164,10 @@ function DailyDeckCard({ card, index, isFirstIncomplete, onUpdateCard, onEditCar
                           timeSpent,
                           completedAt: new Date().toISOString(),
                         });
-                        setIsExpanded(false);
+                        // Collapse after marking complete
+                        if (isExpanded) {
+                          onToggleExpanded();
+                        }
                       }}
                     />
                   )}

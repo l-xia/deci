@@ -1,5 +1,5 @@
 import { Droppable } from '@hello-pangea/dnd';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Card, Template } from '../../types';
 import DailyDeckCard from './DailyDeckCard';
 import DailyDeckHeader from './DailyDeckHeader';
@@ -30,6 +30,15 @@ function DailyDeck({
   const [menuOpen, setMenuOpen] = useState(false);
   const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [manuallyExpandedIndex, setManuallyExpandedIndex] = useState<number | null>(null);
+
+  // Auto-expand the first incomplete card (derived state)
+  const firstIncompleteIndex = useMemo(() =>
+    cards.findIndex(c => !c.completed),
+    [cards]
+  );
+
+  const expandedCardIndex = manuallyExpandedIndex ?? firstIncompleteIndex;
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -114,9 +123,8 @@ function DailyDeck({
                   </div>
                 ) : (
                   cards.map((card: Card, index: number) => {
-                    // Find the first incomplete card
-                    const firstIncompleteIndex = cards.findIndex(c => !c.completed);
                     const isFirstIncomplete = index === firstIncompleteIndex;
+                    const isExpanded = expandedCardIndex === index;
 
                     return (
                       <DailyDeckCard
@@ -124,6 +132,8 @@ function DailyDeck({
                         card={card}
                         index={index}
                         isFirstIncomplete={isFirstIncomplete}
+                        isExpanded={isExpanded}
+                        onToggleExpanded={() => setManuallyExpandedIndex(isExpanded ? null : index)}
                         onUpdateCard={onUpdateCard}
                         onEditCard={onEditCard}
                         onDeleteCard={onDeleteCard}
