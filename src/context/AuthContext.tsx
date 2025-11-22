@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { formatFirebaseAuthError } from '../utils/errorHandler';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -37,35 +38,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  interface FirebaseAuthError {
-    code: string;
-    message: string;
-  }
-
-  // Helper to format Firebase errors
-  const formatFirebaseError = (err: FirebaseAuthError): string => {
-    console.error('Firebase Auth Error:', err);
-
-    // Network-related errors
-    if (err.code === 'auth/network-request-failed') {
-      return 'Network error. Please check your internet connection and try again.';
-    }
-
-    // Common auth errors
-    const errorMessages: Record<string, string> = {
-      'auth/invalid-email': 'Invalid email address.',
-      'auth/user-disabled': 'This account has been disabled.',
-      'auth/user-not-found': 'No account found with this email.',
-      'auth/wrong-password': 'Incorrect password.',
-      'auth/email-already-in-use': 'An account already exists with this email.',
-      'auth/weak-password': 'Password should be at least 6 characters.',
-      'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
-      'auth/operation-not-allowed': 'Email/password accounts are not enabled. Please contact support.',
-      'auth/internal-error': 'An internal error occurred. Please try again.',
-    };
-
-    return errorMessages[err.code] || err.message || 'An error occurred during authentication.';
-  };
 
   // Sign up with email and password
   const signup = async (email: string, password: string) => {
@@ -74,7 +46,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       return userCredential.user;
     } catch (err) {
-      const formattedError = formatFirebaseError(err);
+      const formattedError = formatFirebaseAuthError(err);
       setError(formattedError);
       throw err;
     }
@@ -87,7 +59,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return userCredential.user;
     } catch (err) {
-      const formattedError = formatFirebaseError(err);
+      const formattedError = formatFirebaseAuthError(err);
       setError(formattedError);
       throw err;
     }
@@ -99,7 +71,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setError(null);
       await signOut(auth);
     } catch (err) {
-      const formattedError = formatFirebaseError(err as FirebaseAuthError);
+      const formattedError = formatFirebaseAuthError(err);
       setError(formattedError);
       throw err;
     }

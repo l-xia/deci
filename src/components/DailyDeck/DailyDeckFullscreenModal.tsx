@@ -2,6 +2,7 @@ import type { Card } from '../../types';
 import Timer from '../Timer';
 import { getCategoryColors } from '../../utils/categories';
 import { formatTime } from '../../utils/formatTime';
+import { CheckIcon } from '@heroicons/react/24/outline';
 
 interface DailyDeckFullscreenModalProps {
   card: Card;
@@ -60,9 +61,7 @@ function DailyDeckFullscreenModal({
           {card.completed && card.timeSpent && (
             <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
               <div className="flex items-center gap-3 text-green-700">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+                <CheckIcon className="w-6 h-6" />
                 <span className="text-lg font-medium">
                   Completed in {formatTime(card.timeSpent)}
                 </span>

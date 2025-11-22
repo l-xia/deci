@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { Card } from '../types';
 import { VALIDATION_RULES } from '../utils/validators';
 import { cardSchema, type CardFormData } from '../utils/validation/schemas';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface CardModalProps {
   card?: Card | null;
@@ -76,9 +77,7 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 

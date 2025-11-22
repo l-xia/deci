@@ -91,38 +91,31 @@ export function useDataSync({
     }
   }, [firebase.initialized, hasLoadedOnce, firebase, setCards, setDailyDeck, setTemplates, posthog]);
 
+  // Combined effect for all data syncing to reduce useEffect overhead
   useEffect(() => {
-    if (firebase.initialized && hasLoadedOnce) {
-      // Check reference equality - React state updates create new references
-      if (cards !== lastSavedCardsRef.current) {
-        console.log('📝 Cards changed, triggering debounced save...', {
-          cardsCount: Object.values(cards).flat().length
-        });
-        lastSavedCardsRef.current = cards;
-        firebase.debouncedSaveCards(cards);
-      }
-    }
-  }, [cards, firebase.initialized, firebase.debouncedSaveCards, hasLoadedOnce]);
+    if (!firebase.initialized || !hasLoadedOnce) return;
 
-  useEffect(() => {
-    if (firebase.initialized && hasLoadedOnce) {
-      // Check reference equality - React state updates create new references
-      if (dailyDeck !== lastSavedDailyDeckRef.current) {
-        lastSavedDailyDeckRef.current = dailyDeck;
-        firebase.debouncedSaveDailyDeck(dailyDeck);
-      }
+    // Check and save cards
+    if (cards !== lastSavedCardsRef.current) {
+      console.log('📝 Cards changed, triggering debounced save...', {
+        cardsCount: Object.values(cards).flat().length
+      });
+      lastSavedCardsRef.current = cards;
+      firebase.debouncedSaveCards(cards);
     }
-  }, [dailyDeck, firebase.initialized, firebase.debouncedSaveDailyDeck, hasLoadedOnce]);
 
-  useEffect(() => {
-    if (firebase.initialized && hasLoadedOnce) {
-      // Check reference equality - React state updates create new references
-      if (templates !== lastSavedTemplatesRef.current) {
-        lastSavedTemplatesRef.current = templates;
-        firebase.debouncedSaveTemplates(templates);
-      }
+    // Check and save daily deck
+    if (dailyDeck !== lastSavedDailyDeckRef.current) {
+      lastSavedDailyDeckRef.current = dailyDeck;
+      firebase.debouncedSaveDailyDeck(dailyDeck);
     }
-  }, [templates, firebase.initialized, firebase.debouncedSaveTemplates, hasLoadedOnce]);
+
+    // Check and save templates
+    if (templates !== lastSavedTemplatesRef.current) {
+      lastSavedTemplatesRef.current = templates;
+      firebase.debouncedSaveTemplates(templates);
+    }
+  }, [cards, dailyDeck, templates, firebase, hasLoadedOnce]);
 
   useEffect(() => {
     if (!firebase.initialized || !hasLoadedOnce) return;

@@ -2,6 +2,7 @@ import { Droppable } from '@hello-pangea/dnd';
 import Card from './Card';
 import type { Card as CardType } from '../types';
 import { getCategoryColors } from '../utils/categories';
+import { PlusIcon } from '@heroicons/react/24/outline';
 
 interface CardStackProps {
   droppableId: 'structure' | 'upkeep' | 'play' | 'default';
@@ -28,9 +29,7 @@ function CardStack({ droppableId, title, cards, onAddCard, onEditCard, onDeleteC
           className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
           title="Add card"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <PlusIcon className="w-5 h-5" />
         </button>
       </div>
 
