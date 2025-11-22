@@ -110,6 +110,26 @@ function AuthenticatedApp() {
     dailyDeck.setDailyDeck(updatedDeck);
   }, [dailyDeck]);
 
+  const handleMarkCardIncomplete = useCallback((index: number, card: Card, updates: Partial<Card>) => {
+    // Remove completion-related fields
+    const { ...cardWithoutCompletionFields } = card;
+    const updatedCard = { ...cardWithoutCompletionFields, ...updates };
+
+    const newDeck = [...dailyDeck.dailyDeck];
+    newDeck.splice(index, 1);
+
+    // Find the first incomplete card position (insert before first incomplete)
+    const firstIncompleteIndex = newDeck.findIndex(c => !c.completed);
+    const insertIndex = firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex;
+
+    newDeck.splice(insertIndex, 0, updatedCard);
+    dailyDeck.setDailyDeck(newDeck);
+
+    posthog?.capture('card_marked_incomplete', {
+      card_id: card.id,
+    });
+  }, [dailyDeck, posthog]);
+
   const handleUpdateCard = useCallback((index: number, updates: Partial<Card>) => {
     const card = dailyDeck.dailyDeck[index];
     if (!card) return;
@@ -119,10 +139,13 @@ function AuthenticatedApp() {
     // If marking as complete, reorder the deck
     if (updates.completed && !card.completed) {
       handleMarkCardComplete(index, card, updates);
+    } else if (updates.completed === false && card.completed) {
+      // If marking as incomplete, reorder the deck
+      handleMarkCardIncomplete(index, card, updates);
     } else {
       handleRegularCardUpdate(index, updatedCard);
     }
-  }, [dailyDeck, handleMarkCardComplete, handleRegularCardUpdate]);
+  }, [dailyDeck, handleMarkCardComplete, handleMarkCardIncomplete, handleRegularCardUpdate]);
 
   const handleEditDailyDeckCard = useCallback((index: number) => {
     const card = dailyDeck.dailyDeck[index];

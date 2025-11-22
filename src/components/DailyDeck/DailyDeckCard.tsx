@@ -36,6 +36,20 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
     }
   };
 
+  const handleMarkIncomplete = () => {
+    onUpdateCard(index, {
+      completed: false,
+    });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    // Only allow right-click to mark as incomplete if the card is completed
+    if (card.completed) {
+      e.preventDefault();
+      handleMarkIncomplete();
+    }
+  };
+
   const handleToggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
     onToggleExpanded();
@@ -49,6 +63,7 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onDoubleClick={() => !snapshot.isDragging && onDoubleClick(index)}
+          onContextMenu={handleContextMenu}
           data-card-incomplete={!card.completed}
           className={`border-2 rounded-md shadow-lg transition-all mb-3 ${
             card.completed
