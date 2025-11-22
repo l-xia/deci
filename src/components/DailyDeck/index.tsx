@@ -73,12 +73,12 @@ function DailyDeck({
           ${drawerOpen
             ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none overflow-hidden'
             : 'relative max-h-[55vh] overflow-hidden'}
-          lg:relative lg:h-[820px] lg:p-4 lg:overflow-hidden lg:static lg:translate-y-0
+          lg:relative lg:h-[100vh] lg:max-h-[85vh] lg:p-2 lg:overflow-hidden lg:static lg:translate-y-0
         `}
       >
         {/* Mobile drawer toggle */}
         <button
-          className="lg:hidden flex justify-center items-center pt-2 pb-1 cursor-pointer flex-shrink-0 hover:bg-gray-50 transition-colors"
+          className="lg:hidden flex justify-center overflow-auto max-h-[10vh] items-center pt-2 pb-1 cursor-pointer flex-shrink-0 hover:bg-gray-50 transition-colors"
           onClick={() => setDrawerOpen(!drawerOpen)}
           aria-label={drawerOpen ? 'Close drawer' : 'Open drawer'}
         >
