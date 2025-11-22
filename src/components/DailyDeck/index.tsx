@@ -33,7 +33,6 @@ function DailyDeck({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [manuallyExpandedIndex, setManuallyExpandedIndex] = useState<number | null>(null);
 
-  // Auto-expand the first incomplete card (derived state)
   const firstIncompleteIndex = useMemo(() =>
     cards.findIndex(c => !c.completed),
     [cards]
@@ -72,8 +71,8 @@ function DailyDeck({
           transition-all duration-300 ease-in-out
           ${drawerOpen
             ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none overflow-hidden'
-            : 'relative max-h-[55vh] overflow-hidden'}
-          lg:relative lg:h-[100vh] lg:max-h-[85vh] lg:p-2 lg:overflow-hidden lg:static lg:translate-y-0
+            : 'relative h-[55vh] overflow-hidden'}
+          lg:relative lg:h-[85vh] lg:p-2 lg:overflow-hidden lg:static lg:translate-y-0
         `}
       >
         {/* Mobile drawer toggle */}

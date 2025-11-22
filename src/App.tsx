@@ -52,7 +52,7 @@ function AuthenticatedApp() {
   }, [editingCard, selectedCategory, editingDailyDeckIndex, cards, dailyDeck, posthog, closeModal]);
 
   const handleDeleteCard = useCallback((category: CategoryKey, cardId: string) => {
-    if (confirm('Delete this card? This will also remove it from your daily deck.')) {
+    if (confirm('Delete this card? This will also remove it from your daily deck if present.')) {
       cards.deleteCard(category, cardId, posthog);
       dailyDeck.removeCardById(cardId, posthog);
     }

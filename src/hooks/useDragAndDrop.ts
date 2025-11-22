@@ -67,7 +67,10 @@ export function useDragAndDrop(
 
     // Find the position after the last completed card
     const lastCompletedIndex = newDailyDeck.findIndex(c => !c.completed);
-    const insertIndex = lastCompletedIndex === -1 ? newDailyDeck.length : lastCompletedIndex;
+    const firstIncompleteIndex = lastCompletedIndex === -1 ? newDailyDeck.length : lastCompletedIndex;
+
+    // Use the destination index, but ensure it's at or after the first incomplete position
+    const insertIndex = Math.max(destination.index, firstIncompleteIndex);
 
     newDailyDeck.splice(insertIndex, 0, cardWithSource);
     setDailyDeck(newDailyDeck);
