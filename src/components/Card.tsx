@@ -10,10 +10,19 @@ interface CardProps {
   onDelete: (id: string) => void;
   isDailyDeck?: boolean;
   categoryKey: 'structure' | 'upkeep' | 'play' | 'default';
+  dailyDeck?: CardType[];
 }
 
-function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey }: CardProps) {
+function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey, dailyDeck = [] }: CardProps) {
   const colors = getCategoryColors(categoryKey);
+
+  // Calculate how many times this card is in the daily deck
+  const timesInDailyDeck = dailyDeck.filter((deckCard) => deckCard.id === card.id).length;
+
+  // Calculate remaining uses for limited recurrence cards
+  const remainingUses = card.recurrenceType === 'limited' && card.maxUses
+    ? card.maxUses - timesInDailyDeck
+    : 0;
 
   return (
     <Draggable draggableId={card.id} index={index}>
@@ -43,7 +52,7 @@ function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey 
                 )}
                 {card.recurrenceType === 'limited' && card.maxUses && (
                   <span className="inline-block px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-md">
-                    {card.maxUses - (card.timesUsed || 0)}/{card.maxUses} left
+                    {remainingUses}/{card.maxUses} left
                   </span>
                 )}
                 {card.recurrenceType === 'once' && (card.timesUsed || 0) === 0 && (
@@ -53,7 +62,7 @@ function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey 
                 )}
                 {card.recurrenceType === 'always' && (
                   <span className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs rounded-md">
-                    ∞
+                    ∞ {timesInDailyDeck > 0 && `(${timesInDailyDeck} in deck)`}
                   </span>
                 )}
               </div>

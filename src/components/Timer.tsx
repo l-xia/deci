@@ -1,18 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import type { Card } from '../types';
 import { formatTime } from '../utils/formatTime';
-import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid';
-import { CheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { PlayIcon, PauseIcon, CheckIcon } from '@heroicons/react/24/solid';
 
 interface TimerProps {
   card: Card;
-  onComplete: (timeSpent: number) => void;
+  onComplete?: () => void;
 }
 
-function Timer({ card, onComplete }: TimerProps) {
+interface TimerRef {
+  getSeconds: () => number;
+  reset: () => void;
+}
+
+const Timer = forwardRef<TimerRef, TimerProps>(({ card, onComplete }, ref) => {
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const intervalRef = useRef<number | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    getSeconds: () => seconds,
+    reset: () => {
+      setIsRunning(false);
+      setSeconds(0);
+    },
+  }));
 
   useEffect(() => {
     if (isRunning) {
@@ -41,13 +53,9 @@ function Timer({ card, onComplete }: TimerProps) {
   };
 
   const handleComplete = () => {
-    setIsRunning(false);
-    onComplete(seconds);
-  };
-
-  const handleReset = () => {
-    setIsRunning(false);
-    setSeconds(0);
+    if (onComplete) {
+      onComplete();
+    }
   };
 
   if (card.completed) {
@@ -57,7 +65,7 @@ function Timer({ card, onComplete }: TimerProps) {
   return (
     <div className="mt-3 p-3 bg-white bg-opacity-50 rounded-md border border-gray-200">
       <div className="flex items-center justify-between">
-        <div className="text-2xl font-mono font-bold text-gray-700">
+        <div className="text-xl font-bold text-gray-700">
           {formatTime(seconds)}
         </div>
 
@@ -65,7 +73,7 @@ function Timer({ card, onComplete }: TimerProps) {
           {!isRunning ? (
             <button
               onClick={handleStart}
-              className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
+              className="p-2 text-grey-700 hover:text-grey-800 rounded-md transition-colors"
               title="Start timer"
             >
               <PlayIcon className="w-4 h-4" />
@@ -73,36 +81,26 @@ function Timer({ card, onComplete }: TimerProps) {
           ) : (
             <button
               onClick={handlePause}
-              className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition-colors"
+              className="p-2 text-yellow-500 hover:text-yellow-600 rounded-md transition-colors"
               title="Pause timer"
             >
               <PauseIcon className="w-4 h-4" />
             </button>
           )}
-
-          {seconds > 0 && (
-            <>
-              <button
-                onClick={handleComplete}
-                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors"
-                title="Mark as complete"
-              >
-                <CheckIcon className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={handleReset}
-                className="p-2 bg-gray-400 hover:bg-gray-500 text-white rounded-md transition-colors"
-                title="Reset timer"
-              >
-                <ArrowPathIcon className="w-4 h-4" />
-              </button>
-            </>
-          )}
+          <button
+            onClick={handleComplete}
+            className="p-2 text-green-600 hover:text-green-700 rounded-md transition-colors"
+            title="Mark as complete"
+          >
+            <CheckIcon className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
   );
-}
+});
+
+Timer.displayName = 'Timer';
 
 export default Timer;
+export type { TimerRef };

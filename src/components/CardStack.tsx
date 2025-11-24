@@ -12,13 +12,14 @@ interface CardStackProps {
   onAddCard: () => void;
   onEditCard: (card: CardType) => void;
   onDeleteCard: (id: string) => void;
+  dailyDeck?: CardType[];
 }
 
-function CardStack({ droppableId, title, cards, onAddCard, onEditCard, onDeleteCard }: CardStackProps) {
+function CardStack({ droppableId, title, cards, onAddCard, onEditCard, onDeleteCard, dailyDeck }: CardStackProps) {
   const colors = getCategoryColors(droppableId);
 
   return (
-    <div className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-[300px] md:h-full md:max-h-[400px]`}>
+    <div className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-[42vh]`}>
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900 relative inline-block">
           <span className="relative z-10">{title}</span>
@@ -58,6 +59,7 @@ function CardStack({ droppableId, title, cards, onAddCard, onEditCard, onDeleteC
                   onDelete={onDeleteCard}
                   isDailyDeck={false}
                   categoryKey={droppableId}
+                  {...(dailyDeck && { dailyDeck })}
                 />
               ))
             )}

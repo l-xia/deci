@@ -11,7 +11,7 @@ interface DailyDeckProps {
   cards: Card[];
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
   onEditCard: (index: number) => void;
-  onDeleteCard: (index: number) => void;
+  onReturnToStack?: (index: number) => void;
   templates: Template[];
   onSaveTemplate: (name: string) => void;
   onLoadTemplate: (templateId: string) => void;
@@ -22,7 +22,7 @@ function DailyDeck({
   cards,
   onUpdateCard,
   onEditCard,
-  onDeleteCard,
+  onReturnToStack,
   templates,
   onSaveTemplate,
   onLoadTemplate,
@@ -67,7 +67,7 @@ function DailyDeck({
       {/* Main container */}
       <div
         className={`
-          bg-white rounded-md border-2 border-gray-200 shadow-lg flex flex-col
+          bg-white rounded-t-md border-2 border-gray-200 shadow-lg flex flex-col
           transition-all duration-300 ease-in-out
           ${drawerOpen
             ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none overflow-hidden'
@@ -130,7 +130,7 @@ function DailyDeck({
                         onToggleExpanded={() => setManuallyExpandedIndex(isExpanded ? null : index)}
                         onUpdateCard={onUpdateCard}
                         onEditCard={onEditCard}
-                        onDeleteCard={onDeleteCard}
+                        {...(onReturnToStack && { onReturnToStack })}
                         onDoubleClick={handleDoubleClick}
                       />
                     );

@@ -154,10 +154,13 @@ function AuthenticatedApp() {
     }
   }, [dailyDeck.dailyDeck, openDailyDeckCardModal]);
 
-  const handleDeleteDailyDeckCard = useCallback((index: number) => {
+  const handleReturnToStack = useCallback((index: number) => {
     const card = dailyDeck.dailyDeck[index];
     if (card) {
       dailyDeck.removeCardById(card.id, posthog);
+      posthog?.capture('card_returned_to_stack', {
+        card_id: card.id,
+      });
     }
   }, [dailyDeck, posthog]);
 
@@ -243,6 +246,7 @@ function AuthenticatedApp() {
                         onAddCard={() => openModal(key)}
                         onEditCard={(card) => openModal(key, card)}
                         onDeleteCard={(cardId) => handleDeleteCard(key, cardId)}
+                        dailyDeck={dailyDeck.dailyDeck}
                       />
                     </div>
                   );
@@ -259,7 +263,7 @@ function AuthenticatedApp() {
                 onDeleteTemplate={handleDeleteTemplate}
                 onUpdateCard={handleUpdateCard}
                 onEditCard={handleEditDailyDeckCard}
-                onDeleteCard={handleDeleteDailyDeckCard}
+                onReturnToStack={handleReturnToStack}
               />
             </div>
           </div>

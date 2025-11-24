@@ -1,10 +1,11 @@
 import { Draggable } from '@hello-pangea/dnd';
+import { useRef, useState } from 'react';
 import type { Card } from '../../types';
-import Timer from '../Timer';
+import Timer, { type TimerRef } from '../Timer';
 import { getCategoryColors } from '../../utils/categories';
 import { formatTime } from '../../utils/formatTime';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import { CardActionButtons } from './CardActionButtons';
+import CardContextMenu from './CardContextMenu';
 
 interface DailyDeckCardProps {
   card: Card;
@@ -14,21 +15,24 @@ interface DailyDeckCardProps {
   onToggleExpanded: () => void;
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
   onEditCard: (index: number) => void;
-  onDeleteCard: (index: number) => void;
   onDoubleClick: (index: number) => void;
+  onReturnToStack?: (index: number) => void;
 }
 
-function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExpanded, onUpdateCard, onEditCard, onDeleteCard, onDoubleClick }: DailyDeckCardProps) {
+function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExpanded, onUpdateCard, onEditCard, onDoubleClick, onReturnToStack }: DailyDeckCardProps) {
+  const timerRef = useRef<TimerRef>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const isFirstCard = isFirstIncomplete && !card.completed;
   const colors = getCategoryColors(card.sourceCategory || 'default');
   const borderColor = colors.border;
   const highlightColor = colors.highlight;
 
   const handleMarkComplete = () => {
+    const timeSpent = timerRef.current?.getSeconds() || 0;
     onUpdateCard(index, {
       completed: true,
       completedAt: new Date().toISOString(),
-      timeSpent: 0,
+      timeSpent,
     });
     // Collapse after marking complete
     if (isExpanded) {
@@ -43,41 +47,47 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    // Only allow right-click to mark as incomplete if the card is completed
-    if (card.completed) {
-      e.preventDefault();
-      handleMarkIncomplete();
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleReturnToStack = () => {
+    if (onReturnToStack) {
+      onReturnToStack(index);
     }
   };
 
-  const handleToggleExpand = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleExpanded();
-  };
-
   return (
-    <Draggable draggableId={`daily-${card.id}-${index}`} index={index}>
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          onDoubleClick={() => !snapshot.isDragging && onDoubleClick(index)}
-          onContextMenu={handleContextMenu}
-          data-card-incomplete={!card.completed}
-          className={`border-2 rounded-md shadow-lg transition-all mb-3 ${
-            card.completed
-              ? 'bg-gray-50 border-gray-300 opacity-60'
-              : `bg-white ${borderColor}`
-          } ${
-            snapshot.isDragging
-              ? 'shadow-2xl rotate-2 cursor-grabbing'
-              : 'hover:shadow-xl cursor-grab'
-          } ${isFirstCard && isExpanded ? 'p-6' : 'p-4'}`}
-          style={{
-            ...provided.draggableProps.style,
-          }}
-        >
+    <>
+      <Draggable draggableId={`daily-${card.id}-${index}`} index={index}>
+        {(provided, snapshot) => {
+          // Override the drag handle's onContextMenu to show our custom menu
+          const dragHandleProps = {
+            ...provided.dragHandleProps,
+            onContextMenu: handleContextMenu,
+          };
+
+          return (
+            <div
+              ref={provided.innerRef}
+              {...provided.draggableProps}
+              {...dragHandleProps}
+              onDoubleClick={() => !snapshot.isDragging && onDoubleClick(index)}
+              data-card-incomplete={!card.completed}
+              className={`border-2 rounded-md shadow-lg transition-all mb-3 ${
+                card.completed
+                  ? 'bg-gray-50 border-gray-300 opacity-60'
+                  : `bg-white ${borderColor}`
+              } ${
+                snapshot.isDragging
+                  ? 'shadow-2xl rotate-2 cursor-grabbing'
+                  : 'hover:shadow-xl cursor-grab'
+              } ${isFirstCard && isExpanded ? 'p-6' : 'p-4'}`}
+              style={{
+                ...provided.draggableProps.style,
+              }}
+            >
           {isFirstCard ? (
             <>
               <div className="flex justify-between items-start gap-3">
@@ -103,24 +113,6 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
                       {card.duration} min
                     </span>
                   )}
-                  <CardActionButtons
-                    isCompleted={card.completed}
-                    isExpanded={isExpanded}
-                    isLarge={true}
-                    onEdit={(e) => {
-                      e.stopPropagation();
-                      onEditCard(index);
-                    }}
-                    onComplete={(e) => {
-                      e.stopPropagation();
-                      handleMarkComplete();
-                    }}
-                    onDelete={(e) => {
-                      e.stopPropagation();
-                      onDeleteCard(index);
-                    }}
-                    onToggleExpand={handleToggleExpand}
-                  />
                 </div>
               </div>
 
@@ -134,30 +126,28 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
 
                   {!card.completed && (
                     <Timer
+                      ref={timerRef}
                       card={card}
-                      onComplete={(timeSpent) => {
-                        onUpdateCard(index, {
-                          completed: true,
-                          timeSpent,
-                          completedAt: new Date().toISOString(),
-                        });
-                        // Collapse after marking complete
-                        if (isExpanded) {
-                          onToggleExpanded();
-                        }
-                      }}
+                      onComplete={handleMarkComplete}
                     />
                   )}
 
                   {card.completed && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                      <div className="flex items-center gap-2 text-green-700">
-                        <CheckIcon className="w-5 h-5" />
-                        <span className="text-base">
-                          {card.timeSpent !== undefined && card.timeSpent > 0
-                            ? `Completed in ${formatTime(card.timeSpent)}`
-                            : 'Completed'}
-                        </span>
+                      <div className="flex items-center justify-between text-green-700">
+                        <div className="flex items-center gap-2">
+                          <CheckIcon className="w-5 h-5" />
+                          <span className="text-base">
+                            {card.timeSpent !== undefined && card.timeSpent > 0
+                              ? `Completed in ${formatTime(card.timeSpent)}`
+                              : 'Completed'}
+                          </span>
+                        </div>
+                        {card.completedAt && (
+                          <span className="text-sm text-green-600">
+                            {new Date(card.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -187,30 +177,27 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
                     {card.duration} min
                   </span>
                 )}
-                {!card.completed && (
-                  <CardActionButtons
-                    isCompleted={card.completed}
-                    isLarge={false}
-                    onEdit={(e) => {
-                      e.stopPropagation();
-                      onEditCard(index);
-                    }}
-                    onComplete={(e) => {
-                      e.stopPropagation();
-                      handleMarkComplete();
-                    }}
-                    onDelete={(e) => {
-                      e.stopPropagation();
-                      onDeleteCard(index);
-                    }}
-                  />
-                )}
               </div>
             </div>
           )}
         </div>
-      )}
-    </Draggable>
+        );
+        }}
+      </Draggable>
+
+    {contextMenu && (
+      <CardContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        isCompleted={!!card.completed}
+        onEdit={() => onEditCard(index)}
+        onMarkComplete={handleMarkComplete}
+        onMarkIncomplete={handleMarkIncomplete}
+        onReturnToStack={handleReturnToStack}
+        onClose={() => setContextMenu(null)}
+      />
+    )}
+  </>
   );
 }
 
