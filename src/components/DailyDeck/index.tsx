@@ -1,5 +1,6 @@
 import { Droppable } from '@hello-pangea/dnd';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { Card, Template } from '../../types';
 import DailyDeckCard from './DailyDeckCard';
 import DailyDeckHeader from './DailyDeckHeader';
@@ -9,6 +10,8 @@ import DailyDeckFullscreenModal from './DailyDeckFullscreenModal';
 interface DailyDeckProps {
   cards: Card[];
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
+  onEditCard: (index: number) => void;
+  onReturnToStack?: (index: number) => void;
   templates: Template[];
   onSaveTemplate: (name: string) => void;
   onLoadTemplate: (templateId: string) => void;
@@ -18,6 +21,8 @@ interface DailyDeckProps {
 function DailyDeck({
   cards,
   onUpdateCard,
+  onEditCard,
+  onReturnToStack,
   templates,
   onSaveTemplate,
   onLoadTemplate,
@@ -26,6 +31,14 @@ function DailyDeck({
   const [menuOpen, setMenuOpen] = useState(false);
   const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [manuallyExpandedIndex, setManuallyExpandedIndex] = useState<number | null>(null);
+
+  const firstIncompleteIndex = useMemo(() =>
+    cards.findIndex(c => !c.completed),
+    [cards]
+  );
+
+  const expandedCardIndex = manuallyExpandedIndex ?? firstIncompleteIndex;
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -54,33 +67,27 @@ function DailyDeck({
       {/* Main container */}
       <div
         className={`
-          bg-white rounded-md border-2 border-gray-200 shadow-lg flex flex-col overflow-hidden
-          lg:relative lg:h-[820px] lg:p-4
-          lg:static lg:translate-y-0
+          bg-white rounded-t-md border-2 border-gray-200 shadow-lg flex flex-col
           transition-all duration-300 ease-in-out
           ${drawerOpen
-            ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none'
-            : 'relative h-full'}
+            ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none overflow-hidden'
+            : 'relative h-[55vh] overflow-hidden'}
+          lg:relative lg:h-[85vh] lg:p-2 lg:overflow-hidden lg:static lg:translate-y-0
         `}
       >
         {/* Mobile drawer toggle */}
         <button
-          className="lg:hidden flex justify-center items-center pt-2 pb-1 cursor-pointer flex-shrink-0 hover:bg-gray-50 transition-colors"
+          className="lg:hidden flex justify-center overflow-auto max-h-[10vh] items-center pt-2 pb-1 cursor-pointer flex-shrink-0 hover:bg-gray-50 transition-colors"
           onClick={() => setDrawerOpen(!drawerOpen)}
           aria-label={drawerOpen ? 'Close drawer' : 'Open drawer'}
         >
-          <svg
-            className={`w-6 h-6 text-gray-500 transition-transform duration-200 ${drawerOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDownIcon
+            className={`w-6 h-6 text-gray-500 transition-transform duration-200 ${drawerOpen ? '' : 'rotate-180'}`}
+          />
         </button>
 
         {/* Content */}
-        <div className="p-4 flex flex-col flex-1 min-h-0">
+        <div className="p-4 flex flex-col flex-1 min-h-0 lg:flex">
           <DailyDeckHeader
             menuOpen={menuOpen}
             onMenuToggle={() => setMenuOpen(!menuOpen)}
@@ -98,7 +105,7 @@ function DailyDeck({
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className={`flex-1 min-h-0 overflow-y-auto ${
+                className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${
                   snapshot.isDraggingOver ? 'bg-blue-50 rounded-md' : ''
                 }`}
               >
@@ -109,15 +116,25 @@ function DailyDeck({
                     </p>
                   </div>
                 ) : (
-                  cards.map((card: Card, index: number) => (
-                    <DailyDeckCard
-                      key={`daily-${card.id}-${index}`}
-                      card={card}
-                      index={index}
-                      onUpdateCard={onUpdateCard}
-                      onDoubleClick={handleDoubleClick}
-                    />
-                  ))
+                  cards.map((card: Card, index: number) => {
+                    const isFirstIncomplete = index === firstIncompleteIndex;
+                    const isExpanded = expandedCardIndex === index;
+
+                    return (
+                      <DailyDeckCard
+                        key={`daily-${card.id}-${index}`}
+                        card={card}
+                        index={index}
+                        isFirstIncomplete={isFirstIncomplete}
+                        isExpanded={isExpanded}
+                        onToggleExpanded={() => setManuallyExpandedIndex(isExpanded ? null : index)}
+                        onUpdateCard={onUpdateCard}
+                        onEditCard={onEditCard}
+                        {...(onReturnToStack && { onReturnToStack })}
+                        onDoubleClick={handleDoubleClick}
+                      />
+                    );
+                  })
                 )}
                 {provided.placeholder}
               </div>

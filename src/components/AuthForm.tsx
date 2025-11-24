@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
+import { FormField } from './FormField';
 import deciLogo from '../assets/deci_logo.svg';
 
 const loginSchema = z.object({
@@ -93,43 +94,25 @@ const AuthForm = () => {
         <div className="bg-white rounded-lg shadow-md p-8">
           {isLogin ? (
             <form onSubmit={loginHandleSubmit(onLoginSubmit)} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  {...loginRegister('email')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    loginErrors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="you@example.com"
-                  disabled={loading}
-                />
-                {loginErrors.email && (
-                  <p className="text-red-500 text-xs mt-1">{loginErrors.email.message}</p>
-                )}
-              </div>
+              <FormField
+                id="email"
+                label="Email"
+                type="email"
+                placeholder="you@example.com"
+                register={loginRegister('email')}
+                error={loginErrors.email}
+                disabled={loading}
+              />
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  {...loginRegister('password')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    loginErrors.password ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter your password"
-                  disabled={loading}
-                />
-                {loginErrors.password && (
-                  <p className="text-red-500 text-xs mt-1">{loginErrors.password.message}</p>
-                )}
-              </div>
+              <FormField
+                id="password"
+                label="Password"
+                type="password"
+                placeholder="Enter your password"
+                register={loginRegister('password')}
+                error={loginErrors.password}
+                disabled={loading}
+              />
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
@@ -154,62 +137,35 @@ const AuthForm = () => {
             </form>
           ) : (
             <form onSubmit={signupHandleSubmit(onSignupSubmit)} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  {...signupRegister('email')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    signupErrors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="you@example.com"
-                  disabled={loading}
-                />
-                {signupErrors.email && (
-                  <p className="text-red-500 text-xs mt-1">{signupErrors.email.message}</p>
-                )}
-              </div>
+              <FormField
+                id="email"
+                label="Email"
+                type="email"
+                placeholder="you@example.com"
+                register={signupRegister('email')}
+                error={signupErrors.email}
+                disabled={loading}
+              />
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  {...signupRegister('password')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    signupErrors.password ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="At least 8 characters"
-                  disabled={loading}
-                />
-                {signupErrors.password && (
-                  <p className="text-red-500 text-xs mt-1">{signupErrors.password.message}</p>
-                )}
-              </div>
+              <FormField
+                id="password"
+                label="Password"
+                type="password"
+                placeholder="At least 8 characters"
+                register={signupRegister('password')}
+                error={signupErrors.password}
+                disabled={loading}
+              />
 
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  {...signupRegister('confirmPassword')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    signupErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Re-enter your password"
-                  disabled={loading}
-                />
-                {signupErrors.confirmPassword && (
-                  <p className="text-red-500 text-xs mt-1">{signupErrors.confirmPassword.message}</p>
-                )}
-              </div>
+              <FormField
+                id="confirmPassword"
+                label="Confirm Password"
+                type="password"
+                placeholder="Re-enter your password"
+                register={signupRegister('confirmPassword')}
+                error={signupErrors.confirmPassword}
+                disabled={loading}
+              />
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">

@@ -284,7 +284,7 @@ export function validateLoadedData(data: unknown, expectedType: 'cards' | 'daily
   }
 
   switch (expectedType) {
-    case 'cards':
+    case 'cards': {
       if (typeof data !== 'object' || Array.isArray(data)) {
         return { valid: false, error: 'Cards data must be an object' };
       }
@@ -295,6 +295,7 @@ export function validateLoadedData(data: unknown, expectedType: 'cards' | 'daily
         }
       }
       return { valid: true, error: null };
+    }
 
     case 'dailyDeck':
       if (!Array.isArray(data)) {

@@ -1,14 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import AuthForm from './components/AuthForm';
+import { AppHeader } from './components/AppHeader';
 import { AppProvider, useApp } from './context';
 import { useAuth } from './context/AuthContext';
 import { CATEGORIES } from './constants';
-import deciLogo from './assets/deci_logo.svg';
-import type { Card, CategoryKey } from './types';
+import { isCategoryKey } from './utils/typeGuards';
+import { useCardModal } from './hooks/useCardModal';
+import type { Card, CategoryKey, CardsByCategory, Template } from './types';
 
 function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
@@ -16,35 +18,41 @@ function AuthenticatedApp() {
 
   const { firebase, cards, dailyDeck, templates, dragAndDrop, posthog } = app;
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingCard, setEditingCard] = useState<Card | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const openModal = useCallback((category: CategoryKey, card: Card | null = null) => {
-    setSelectedCategory(category);
-    setEditingCard(card);
-    setModalOpen(true);
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setModalOpen(false);
-    setEditingCard(null);
-    setSelectedCategory(null);
-  }, []);
+  const {
+    modalOpen,
+    editingCard,
+    selectedCategory,
+    editingDailyDeckIndex,
+    openModal,
+    openDailyDeckCardModal,
+    closeModal,
+  } = useCardModal();
 
   const handleSaveCard = useCallback((cardData: Partial<Card>) => {
-    if (!selectedCategory) return;
+    if (editingDailyDeckIndex !== null) {
+      const updatedCard = { ...dailyDeck.dailyDeck[editingDailyDeckIndex], ...cardData } as Card;
+      const updatedDeck = [...dailyDeck.dailyDeck];
+      updatedDeck[editingDailyDeckIndex] = updatedCard;
+      dailyDeck.setDailyDeck(updatedDeck);
 
-    if (editingCard) {
-      cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
-    } else {
-      cards.addCard(selectedCategory, cardData, posthog);
+      const sourceCategory = updatedCard.sourceCategory;
+      if (sourceCategory && isCategoryKey(sourceCategory)) {
+        cards.updateCard(sourceCategory, updatedCard.id, cardData, posthog);
+      }
+    } else if (selectedCategory) {
+      if (editingCard) {
+        cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
+      } else {
+        cards.addCard(selectedCategory, cardData, posthog);
+      }
     }
     closeModal();
-  }, [editingCard, selectedCategory, cards, posthog, closeModal]);
+  }, [editingCard, selectedCategory, editingDailyDeckIndex, cards, dailyDeck, posthog, closeModal]);
 
   const handleDeleteCard = useCallback((category: CategoryKey, cardId: string) => {
-    if (confirm('Delete this card? This will also remove it from your daily deck.')) {
+    if (confirm('Delete this card? This will also remove it from your daily deck if present.')) {
       cards.deleteCard(category, cardId, posthog);
       dailyDeck.removeCardById(cardId, posthog);
     }
@@ -65,20 +73,139 @@ function AuthenticatedApp() {
     templates.deleteTemplate(templateId, posthog);
   }, [templates, posthog]);
 
-  const handleUpdateCard = useCallback((index: number, updates: Partial<Card>) => {
-    const updatedDeck = dailyDeck.dailyDeck.map((card, i) =>
-      i === index ? { ...card, ...updates } : card
+  const scrollToNextIncompleteCard = useCallback(() => {
+    setTimeout(() => {
+      const nextIncompleteElement = document.querySelector('[data-card-incomplete="true"]');
+      if (nextIncompleteElement) {
+        nextIncompleteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 300);
+  }, []);
+
+  const handleMarkCardComplete = useCallback((index: number, card: Card, updates: Partial<Card>) => {
+    const updatedCard = { ...card, ...updates };
+    const newDeck = [...dailyDeck.dailyDeck];
+    newDeck.splice(index, 1);
+
+    // Find the position after the last completed card
+    const lastCompletedIndex = newDeck.findIndex(c => !c.completed);
+    const insertIndex = lastCompletedIndex === -1 ? newDeck.length : lastCompletedIndex;
+
+    newDeck.splice(insertIndex, 0, updatedCard);
+    dailyDeck.setDailyDeck(newDeck);
+
+    posthog?.capture('card_completed', {
+      card_id: card.id,
+      time_spent: updates.timeSpent,
+      suggested_duration: card.duration,
+    });
+
+    scrollToNextIncompleteCard();
+  }, [dailyDeck, posthog, scrollToNextIncompleteCard]);
+
+  const handleRegularCardUpdate = useCallback((index: number, updatedCard: Card) => {
+    const updatedDeck = dailyDeck.dailyDeck.map((c, i) =>
+      i === index ? updatedCard : c
     );
     dailyDeck.setDailyDeck(updatedDeck);
+  }, [dailyDeck]);
 
-    if (updates.completed && updates.timeSpent) {
-      posthog?.capture('card_completed', {
-        card_id: dailyDeck.dailyDeck[index]?.id,
-        time_spent: updates.timeSpent,
-        suggested_duration: dailyDeck.dailyDeck[index]?.duration,
+  const handleMarkCardIncomplete = useCallback((index: number, card: Card, updates: Partial<Card>) => {
+    // Remove completion-related fields
+    const { ...cardWithoutCompletionFields } = card;
+    const updatedCard = { ...cardWithoutCompletionFields, ...updates };
+
+    const newDeck = [...dailyDeck.dailyDeck];
+    newDeck.splice(index, 1);
+
+    // Find the first incomplete card position (insert before first incomplete)
+    const firstIncompleteIndex = newDeck.findIndex(c => !c.completed);
+    const insertIndex = firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex;
+
+    newDeck.splice(insertIndex, 0, updatedCard);
+    dailyDeck.setDailyDeck(newDeck);
+
+    posthog?.capture('card_marked_incomplete', {
+      card_id: card.id,
+    });
+  }, [dailyDeck, posthog]);
+
+  const handleUpdateCard = useCallback((index: number, updates: Partial<Card>) => {
+    const card = dailyDeck.dailyDeck[index];
+    if (!card) return;
+
+    const updatedCard = { ...card, ...updates };
+
+    // If marking as complete, reorder the deck
+    if (updates.completed && !card.completed) {
+      handleMarkCardComplete(index, card, updates);
+    } else if (updates.completed === false && card.completed) {
+      // If marking as incomplete, reorder the deck
+      handleMarkCardIncomplete(index, card, updates);
+    } else {
+      handleRegularCardUpdate(index, updatedCard);
+    }
+  }, [dailyDeck, handleMarkCardComplete, handleMarkCardIncomplete, handleRegularCardUpdate]);
+
+  const handleEditDailyDeckCard = useCallback((index: number) => {
+    const card = dailyDeck.dailyDeck[index];
+    if (card) {
+      openDailyDeckCardModal(card, index);
+    }
+  }, [dailyDeck.dailyDeck, openDailyDeckCardModal]);
+
+  const handleReturnToStack = useCallback((index: number) => {
+    const card = dailyDeck.dailyDeck[index];
+    if (card) {
+      dailyDeck.removeCardById(card.id, posthog);
+      posthog?.capture('card_returned_to_stack', {
+        card_id: card.id,
       });
     }
   }, [dailyDeck, posthog]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!firebase.initialized || isRefreshing) return;
+
+    setIsRefreshing(true);
+    try {
+      const result = await firebase.loadData();
+      const loadedCards = result.cards as CardsByCategory | null;
+      const loadedDailyDeck = result.dailyDeck as Card[] | null;
+      const loadedTemplates = result.templates as Template[] | null;
+
+      if (loadedCards) {
+        cards.setCards(loadedCards);
+      }
+      if (loadedDailyDeck) {
+        dailyDeck.setDailyDeck(loadedDailyDeck);
+      }
+      if (loadedTemplates) {
+        templates.setTemplates(loadedTemplates);
+      }
+
+      posthog?.capture('data_refreshed', {
+        cards_count: loadedCards ? Object.values(loadedCards).flat().length : 0,
+        daily_deck_count: loadedDailyDeck?.length || 0,
+        templates_count: loadedTemplates?.length || 0,
+      });
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+      posthog?.capture('refresh_error', { error: error instanceof Error ? error.message : 'Unknown error' });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [firebase, cards, dailyDeck, templates, posthog, isRefreshing]);
+
+  // Memoize filtered cards to avoid recalculating on every render
+  const filteredCardsByCategory = useMemo(() => {
+    return Object.fromEntries(
+      (Object.keys(CATEGORIES) as CategoryKey[]).map(key => [
+        key,
+        cards.getAvailableCards(key, dailyDeck.dailyDeck)
+      ])
+    ) as Record<CategoryKey, Card[]>;
+  }, [cards, dailyDeck.dailyDeck]);
 
   if (!firebase.initialized) {
     return (
@@ -95,72 +222,31 @@ function AuthenticatedApp() {
     <DragDropContext onDragEnd={dragAndDrop.onDragEnd}>
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex flex-col">
         <div className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col">
-          <header className="mb-6 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <img src={deciLogo} alt="Deci" className="h-12" />
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">{currentUser?.email}</span>
-                <button
-                  onClick={logout}
-                  className="text-sm text-gray-500 hover:text-gray-700 underline"
-                >
-                  Sign out
-                </button>
-              </div>
-            </div>
-
-            {firebase.isUsingFirebase && (
-              <div className="text-xs flex items-center gap-1.5">
-                {firebase.saveStatus === 'saving' && (
-                  <svg className="animate-spin h-3 w-3 text-blue-500" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                {firebase.saveStatus === 'saved' && (
-                  <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-                {firebase.saveStatus === 'error' && (
-                  <svg className="w-3 h-3 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                )}
-                <span className={firebase.saveStatus === 'saving' ? 'text-blue-500' : firebase.saveStatus === 'saved' ? 'text-gray-600' : firebase.saveStatus === 'error' ? 'text-red-600' : 'text-gray-600'}>
-                  {firebase.saveStatus === 'saving' && 'Syncing to cloud...'}
-                  {firebase.saveStatus === 'saved' && 'Cloud sync enabled'}
-                  {firebase.saveStatus === 'error' && 'Sync failed'}
-                </span>
-                {firebase.saveStatus === 'error' && (
-                  <button
-                    onClick={() => firebase.retrySave(cards.cards, dailyDeck.dailyDeck, templates.templates)}
-                    className="underline hover:no-underline ml-1 text-red-600"
-                    aria-label="Retry saving data"
-                  >
-                    Retry
-                  </button>
-                )}
-              </div>
-            )}
-          </header>
+          <AppHeader
+            userEmail={currentUser?.email || ''}
+            isUsingFirebase={firebase.isUsingFirebase}
+            saveStatus={firebase.saveStatus}
+            isRefreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            onLogout={logout}
+            onRetrySave={() => firebase.retrySave(cards.cards, dailyDeck.dailyDeck, templates.templates)}
+          />
 
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
             <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
               <div className="md:grid md:grid-cols-2 md:auto-rows-min md:gap-4 flex md:flex-none overflow-x-auto md:overflow-x-visible gap-4 md:gap-0 pb-4 md:pb-0 snap-x snap-mandatory md:snap-none">
                 {(Object.entries(CATEGORIES) as Array<[keyof typeof CATEGORIES, typeof CATEGORIES[keyof typeof CATEGORIES]]>).map(([key, category]) => {
-                  const filteredCards = cards.getAvailableCards(key, dailyDeck.dailyDeck);
                   return (
                     <div key={key} className="flex-shrink-0 w-[85vw] md:w-auto snap-start">
                       <CardStack
                         droppableId={key}
                         title={category.name}
-                        cards={filteredCards}
+                        cards={filteredCardsByCategory[key]}
                         color={category.color}
                         onAddCard={() => openModal(key)}
                         onEditCard={(card) => openModal(key, card)}
                         onDeleteCard={(cardId) => handleDeleteCard(key, cardId)}
+                        dailyDeck={dailyDeck.dailyDeck}
                       />
                     </div>
                   );
@@ -176,6 +262,8 @@ function AuthenticatedApp() {
                 onLoadTemplate={handleLoadTemplate}
                 onDeleteTemplate={handleDeleteTemplate}
                 onUpdateCard={handleUpdateCard}
+                onEditCard={handleEditDailyDeckCard}
+                onReturnToStack={handleReturnToStack}
               />
             </div>
           </div>

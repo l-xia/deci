@@ -1,3 +1,4 @@
+import { EllipsisHorizontalIcon } from '@heroicons/react/24/solid';
 import type { Template } from '../../types';
 import TemplateManager from '../TemplateManager';
 
@@ -35,11 +36,7 @@ function DailyDeckHeader({
           className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
           title="Menu"
         >
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="5" cy="12" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="19" cy="12" r="2" />
-          </svg>
+          <EllipsisHorizontalIcon className="w-6 h-6" />
         </button>
 
         {menuOpen && (

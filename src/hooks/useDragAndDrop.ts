@@ -1,7 +1,15 @@
 import { useCallback } from 'react';
 import type { PostHog } from 'posthog-js';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { Card, CardsByCategory, CategoryKey } from '../types';
+import type { Card, CardsByCategory } from '../types';
+import { isCategoryKey } from '../utils/typeGuards';
+
+// Helper to extract the actual card ID from draggableId
+function extractCardId(draggableId: string): string {
+  return draggableId.startsWith('daily-')
+    ? draggableId.split('-').slice(1, -1).join('-')
+    : draggableId;
+}
 
 export function useDragAndDrop(
   cards: CardsByCategory,
@@ -32,11 +40,14 @@ export function useDragAndDrop(
   const handleAddToDaily = useCallback((source: DropResult['source'], destination: DropResult['destination'], draggableId: string) => {
     if (!destination) return;
 
-    const actualCardId = draggableId.startsWith('daily-')
-      ? draggableId.split('-').slice(1, -1).join('-')
-      : draggableId;
+    const actualCardId = extractCardId(draggableId);
 
-    const sourceCategory = source.droppableId as CategoryKey;
+    if (!isCategoryKey(source.droppableId)) {
+      console.error('Invalid source category:', source.droppableId);
+      return;
+    }
+
+    const sourceCategory = source.droppableId;
     const card = cards[sourceCategory].find(c => c.id === actualCardId);
 
     if (!card) return;
@@ -53,8 +64,24 @@ export function useDragAndDrop(
 
     const newDailyDeck = Array.from(dailyDeck);
     const cardWithSource = { ...card, sourceCategory };
-    newDailyDeck.splice(destination.index, 0, cardWithSource);
+
+    // Find the position after the last completed card
+    const lastCompletedIndex = newDailyDeck.findIndex(c => !c.completed);
+    const firstIncompleteIndex = lastCompletedIndex === -1 ? newDailyDeck.length : lastCompletedIndex;
+
+    // Use the destination index, but ensure it's at or after the first incomplete position
+    const insertIndex = Math.max(destination.index, firstIncompleteIndex);
+
+    newDailyDeck.splice(insertIndex, 0, cardWithSource);
     setDailyDeck(newDailyDeck);
+
+    // Scroll to the newly added card
+    setTimeout(() => {
+      const newCardElement = document.querySelector(`[data-rbd-draggable-id="${card.id}-${insertIndex}"]`);
+      if (newCardElement) {
+        newCardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
 
     posthog?.capture('card_added_to_daily_deck_via_drag', {
       card_id: card.id,
@@ -81,12 +108,15 @@ export function useDragAndDrop(
   const handleMoveCategory = useCallback((source: DropResult['source'], destination: DropResult['destination'], draggableId: string) => {
     if (!destination) return;
 
-    const actualCardId = draggableId.startsWith('daily-')
-      ? draggableId.split('-').slice(1, -1).join('-')
-      : draggableId;
+    const actualCardId = extractCardId(draggableId);
 
-    const sourceCategory = source.droppableId as CategoryKey;
-    const destCategory = destination.droppableId as CategoryKey;
+    if (!isCategoryKey(source.droppableId) || !isCategoryKey(destination.droppableId)) {
+      console.error('Invalid category:', { source: source.droppableId, dest: destination.droppableId });
+      return;
+    }
+
+    const sourceCategory = source.droppableId;
+    const destCategory = destination.droppableId;
     const sourceCards = Array.from(cards[sourceCategory]);
     const destCards = Array.from(cards[destCategory]);
     const cardIndex = sourceCards.findIndex(c => c.id === actualCardId);

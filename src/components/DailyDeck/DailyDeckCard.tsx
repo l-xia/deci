@@ -1,98 +1,203 @@
 import { Draggable } from '@hello-pangea/dnd';
+import { useRef, useState } from 'react';
 import type { Card } from '../../types';
-import Timer from '../Timer';
+import Timer, { type TimerRef } from '../Timer';
 import { getCategoryColors } from '../../utils/categories';
 import { formatTime } from '../../utils/formatTime';
+import { CheckIcon } from '@heroicons/react/24/outline';
+import CardContextMenu from './CardContextMenu';
 
 interface DailyDeckCardProps {
   card: Card;
   index: number;
+  isFirstIncomplete: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
+  onEditCard: (index: number) => void;
   onDoubleClick: (index: number) => void;
+  onReturnToStack?: (index: number) => void;
 }
 
-function DailyDeckCard({ card, index, onUpdateCard, onDoubleClick }: DailyDeckCardProps) {
+function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExpanded, onUpdateCard, onEditCard, onDoubleClick, onReturnToStack }: DailyDeckCardProps) {
+  const timerRef = useRef<TimerRef>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const isFirstCard = isFirstIncomplete && !card.completed;
   const colors = getCategoryColors(card.sourceCategory || 'default');
   const borderColor = colors.border;
   const highlightColor = colors.highlight;
 
-  const isFirstCard = index === 0;
+  const handleMarkComplete = () => {
+    const timeSpent = timerRef.current?.getSeconds() || 0;
+    onUpdateCard(index, {
+      completed: true,
+      completedAt: new Date().toISOString(),
+      timeSpent,
+    });
+    // Collapse after marking complete
+    if (isExpanded) {
+      onToggleExpanded();
+    }
+  };
+
+  const handleMarkIncomplete = () => {
+    onUpdateCard(index, {
+      completed: false,
+    });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleReturnToStack = () => {
+    if (onReturnToStack) {
+      onReturnToStack(index);
+    }
+  };
 
   return (
-    <Draggable draggableId={`daily-${card.id}-${index}`} index={index}>
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          onDoubleClick={() => !snapshot.isDragging && onDoubleClick(index)}
-          className={`bg-white border-2 ${borderColor} rounded-md shadow-lg transition-all mb-3 ${
-            snapshot.isDragging
-              ? 'shadow-2xl rotate-2 cursor-grabbing'
-              : 'hover:shadow-xl cursor-grab'
-          } ${isFirstCard ? 'p-6' : 'p-4'}`}
-          style={{
-            ...provided.draggableProps.style,
-          }}
-        >
+    <>
+      <Draggable draggableId={`daily-${card.id}-${index}`} index={index}>
+        {(provided, snapshot) => {
+          // Override the drag handle's onContextMenu to show our custom menu
+          const dragHandleProps = {
+            ...provided.dragHandleProps,
+            onContextMenu: handleContextMenu,
+          };
+
+          return (
+            <div
+              ref={provided.innerRef}
+              {...provided.draggableProps}
+              {...dragHandleProps}
+              onDoubleClick={() => !snapshot.isDragging && onDoubleClick(index)}
+              data-card-incomplete={!card.completed}
+              className={`border-2 rounded-md shadow-lg transition-all mb-3 ${
+                card.completed
+                  ? 'bg-gray-50 border-gray-300 opacity-60'
+                  : `bg-white ${borderColor}`
+              } ${
+                snapshot.isDragging
+                  ? 'shadow-2xl rotate-2 cursor-grabbing'
+                  : 'hover:shadow-xl cursor-grab'
+              } ${isFirstCard && isExpanded ? 'p-6' : 'p-4'}`}
+              style={{
+                ...provided.draggableProps.style,
+              }}
+            >
           {isFirstCard ? (
             <>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="text-4xl font-bold text-gray-900 relative inline-block">
-                    <span className="relative z-10">{card.title}</span>
-                    <span className={`absolute bottom-0 left-0 right-0 h-3 ${highlightColor} opacity-50 z-0`}></span>
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-bold ${
+                    isExpanded ? 'text-3xl' : 'text-2xl'
+                  } ${card.completed ? 'text-gray-500' : 'text-gray-900'}`}>
+                    <span className="relative inline-block">
+                      <span className="relative z-10">{card.title}</span>
+                      {!card.completed && (
+                        <span className={`absolute bottom-0 left-0 right-0 ${highlightColor} opacity-50 z-0 ${
+                          isExpanded ? 'h-2.5' : 'h-2'
+                        }`}></span>
+                      )}
+                    </span>
                   </h3>
                 </div>
-                {card.duration && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full">
-                    {card.duration} min
-                  </span>
-                )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {card.duration && (
+                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-full ${
+                      card.completed ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {card.duration} min
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {card.description && (
-                <p className="text-lg text-gray-700 mt-4 mb-4 whitespace-pre-line">{card.description}</p>
-              )}
+              {isExpanded && (
+                <>
+                  {card.description && (
+                    <p className={`text-lg mt-4 mb-4 whitespace-pre-line ${
+                      card.completed ? 'text-gray-600' : 'text-gray-700'
+                    }`}>{card.description}</p>
+                  )}
 
-              <Timer
-                card={card}
-                onComplete={(timeSpent) => {
-                  onUpdateCard(index, {
-                    completed: true,
-                    timeSpent,
-                    completedAt: new Date().toISOString(),
-                  });
-                }}
-              />
+                  {!card.completed && (
+                    <Timer
+                      ref={timerRef}
+                      card={card}
+                      onComplete={handleMarkComplete}
+                    />
+                  )}
 
-              {card.completed && card.timeSpent && (
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                  <div className="flex items-center gap-2 text-green-700">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span className="text-base">Completed in {formatTime(card.timeSpent)}</span>
-                  </div>
-                </div>
+                  {card.completed && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                      <div className="flex items-center justify-between text-green-700">
+                        <div className="flex items-center gap-2">
+                          <CheckIcon className="w-5 h-5" />
+                          <span className="text-base">
+                            {card.timeSpent !== undefined && card.timeSpent > 0
+                              ? `Completed in ${formatTime(card.timeSpent)}`
+                              : 'Completed'}
+                          </span>
+                        </div>
+                        {card.completedAt && (
+                          <span className="text-sm text-green-600">
+                            {new Date(card.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : (
             <div className="flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-gray-900 relative inline-block">
-                <span className="relative z-10">{card.title}</span>
-                <span className={`absolute bottom-0 left-0 right-0 h-2 ${highlightColor} opacity-50 z-0`}></span>
-              </h3>
-              {card.duration && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full ml-3 flex-shrink-0">
-                  {card.duration} min
+              <h3 className={`text-xl font-semibold flex-1 ${
+                card.completed ? 'text-gray-500' : 'text-gray-900'
+              }`}>
+                <span className="relative inline-block">
+                  <span className="relative z-10">{card.title}</span>
+                  {!card.completed && (
+                    <span className={`absolute bottom-0 left-0 right-0 h-2 ${highlightColor} opacity-50 z-0`}></span>
+                  )}
                 </span>
-              )}
+              </h3>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {card.completed && (
+                  <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
+                )}
+                {card.duration && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
+                    card.completed ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {card.duration} min
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
-      )}
-    </Draggable>
+        );
+        }}
+      </Draggable>
+
+    {contextMenu && (
+      <CardContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        isCompleted={!!card.completed}
+        onEdit={() => onEditCard(index)}
+        onMarkComplete={handleMarkComplete}
+        onMarkIncomplete={handleMarkIncomplete}
+        onReturnToStack={handleReturnToStack}
+        onClose={() => setContextMenu(null)}
+      />
+    )}
+  </>
   );
 }
 

@@ -1,3 +1,5 @@
+import type { CategoryKey } from './category';
+
 export type RecurrenceType = 'always' | 'once' | 'limited';
 
 export interface Card {
@@ -12,7 +14,7 @@ export interface Card {
   completed?: boolean;
   timeSpent?: number;
   completedAt?: string;
-  sourceCategory?: string;
+  sourceCategory?: CategoryKey;
 }
 
 export interface CardsByCategory {
