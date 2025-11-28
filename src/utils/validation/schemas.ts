@@ -17,8 +17,10 @@ export const cardSchema = z.object({
     .refine((val) => !val || (Number(val) >= VALIDATION_RULES.DURATION_MIN && Number(val) <= VALIDATION_RULES.DURATION_MAX), {
       message: `Duration must be between ${VALIDATION_RULES.DURATION_MIN} and ${VALIDATION_RULES.DURATION_MAX} minutes`,
     }),
-  recurrenceType: z.enum(['always', 'once', 'limited']),
+  recurrenceType: z.enum(['always', 'once', 'limited', 'scheduled']),
   maxUses: z.string().optional(),
+  scheduleType: z.enum(['daily', 'weekly', 'monthly']).optional(),
+  scheduleDays: z.array(z.number()).optional(),
 }).refine((data) => {
   if (data.recurrenceType === 'limited') {
     if (!data.maxUses) return false;
@@ -29,6 +31,17 @@ export const cardSchema = z.object({
 }, {
   message: `Max uses must be between ${VALIDATION_RULES.MAX_USES_MIN} and ${VALIDATION_RULES.MAX_USES_MAX}`,
   path: ['maxUses'],
+}).refine((data) => {
+  if (data.recurrenceType === 'scheduled') {
+    if (!data.scheduleType) return false;
+    if (data.scheduleType !== 'daily' && (!data.scheduleDays || data.scheduleDays.length === 0)) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: 'Please select at least one day for scheduled tasks',
+  path: ['scheduleDays'],
 });
 
 export type CardFormData = z.infer<typeof cardSchema>;

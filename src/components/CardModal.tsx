@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Card } from '../types';
 import { VALIDATION_RULES } from '../utils/validators';
 import { cardSchema, type CardFormData } from '../utils/validation/schemas';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { ScheduleSelector } from './ScheduleSelector';
+import { SCHEDULE_PRESETS } from '../utils/scheduling';
 
 interface CardModalProps {
   card?: Card | null;
@@ -13,12 +15,16 @@ interface CardModalProps {
 }
 
 function CardModal({ card, onSave, onClose }: CardModalProps) {
+  const [scheduleType, setScheduleType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [scheduleDays, setScheduleDays] = useState<number[]>([]);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
     reset,
+    setValue,
   } = useForm<CardFormData>({
     resolver: zodResolver(cardSchema),
     mode: 'onBlur',
@@ -28,6 +34,8 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
       duration: '',
       recurrenceType: 'always',
       maxUses: '',
+      scheduleType: 'daily',
+      scheduleDays: [],
     },
   });
 
@@ -61,6 +69,23 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
 
     if (data.maxUses) {
       cardData.maxUses = Number(data.maxUses);
+    }
+
+    // Handle scheduled recurrence
+    if (data.recurrenceType === 'scheduled' && data.scheduleType) {
+      let rruleString = '';
+
+      if (data.scheduleType === 'daily') {
+        rruleString = SCHEDULE_PRESETS.daily;
+      } else if (data.scheduleType === 'weekly' && scheduleDays.length > 0) {
+        rruleString = SCHEDULE_PRESETS.weekly(scheduleDays);
+      } else if (data.scheduleType === 'monthly' && scheduleDays.length > 0) {
+        rruleString = SCHEDULE_PRESETS.monthly(scheduleDays);
+      }
+
+      if (rruleString) {
+        cardData.scheduleConfig = { rrule: rruleString };
+      }
     }
 
     onSave(cardData);
@@ -232,6 +257,42 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
                 <div>
                   <div className="font-medium text-sm">One-Time Only</div>
                   <div className="text-xs text-gray-500">Disappears after being added once (e.g., Take out trash)</div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="scheduled"
+                  {...register('recurrenceType')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-sm">Scheduled</div>
+                  <div className="text-xs text-gray-500 mb-2">Only available on specific days (e.g., Team meeting every Monday)</div>
+                  {recurrenceType === 'scheduled' && (
+                    <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                      <ScheduleSelector
+                        scheduleType={scheduleType}
+                        selectedDays={scheduleDays}
+                        onChange={(days) => {
+                          setScheduleDays(days);
+                          setValue('scheduleDays', days);
+                        }}
+                        onScheduleTypeChange={(type) => {
+                          setScheduleType(type);
+                          setScheduleDays([]);
+                          setValue('scheduleType', type);
+                          setValue('scheduleDays', []);
+                        }}
+                      />
+                      {errors.scheduleDays && (
+                        <p className="text-xs text-red-500 mt-2">
+                          {errors.scheduleDays.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </label>
             </div>

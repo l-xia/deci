@@ -16,6 +16,7 @@ interface DailyDeckProps {
   onSaveTemplate: (name: string) => void;
   onLoadTemplate: (templateId: string) => void;
   onDeleteTemplate: (templateId: string) => void;
+  onCompleteDay?: () => void;
 }
 
 function DailyDeck({
@@ -27,6 +28,7 @@ function DailyDeck({
   onSaveTemplate,
   onLoadTemplate,
   onDeleteTemplate,
+  onCompleteDay,
 }: DailyDeckProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
@@ -97,6 +99,7 @@ function DailyDeck({
             onLoadTemplate={onLoadTemplate}
             onDeleteTemplate={onDeleteTemplate}
             hasDailyDeck={cards.length > 0}
+            onCompleteDay={onCompleteDay}
           />
 
           {/* Card list */}

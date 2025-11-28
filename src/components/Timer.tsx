@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import type { Card } from '../types';
-import { formatTime } from '../utils/formatTime';
+import { formatTimerDuration } from '../utils/formatTimerDuration';
 import { PlayIcon, PauseIcon, CheckIcon } from '@heroicons/react/24/solid';
 
 interface TimerProps {
@@ -66,7 +66,7 @@ const Timer = forwardRef<TimerRef, TimerProps>(({ card, onComplete }, ref) => {
     <div className="mt-3 p-3 bg-white bg-opacity-50 rounded-md border border-gray-200">
       <div className="flex items-center justify-between">
         <div className="text-xl font-bold text-gray-700">
-          {formatTime(seconds)}
+          {formatTimerDuration(seconds)}
         </div>
 
         <div className="flex gap-2">

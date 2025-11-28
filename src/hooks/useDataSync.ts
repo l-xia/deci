@@ -1,18 +1,22 @@
 import { useEffect, useState, useRef } from 'react';
-import type { PostHog } from 'posthog-js';
 import type { CardsByCategory } from '../types/card';
 import type { Card } from '../types/card';
 import type { Template } from '../types/template';
+import type { DayCompletion, UserStreak } from '../types/dayCompletion';
 
 interface FirebaseReturnType {
   initialized: boolean;
   debouncedSaveCards: (data: CardsByCategory) => void;
   debouncedSaveDailyDeck: (data: Card[]) => void;
   debouncedSaveTemplates: (data: Template[]) => void;
+  debouncedSaveDayCompletions: (data: DayCompletion[]) => void;
+  debouncedSaveUserStreak: (data: UserStreak) => void;
   loadData: () => Promise<{
     cards: CardsByCategory | null;
     dailyDeck: Card[] | null;
     templates: Template[] | null;
+    dayCompletions: DayCompletion[] | null;
+    userStreak: UserStreak | null;
     hasData?: boolean;
   }>;
   flushPendingSaves: () => void;
@@ -25,10 +29,13 @@ interface DataSyncOptions {
   cards: CardsByCategory;
   dailyDeck: Card[];
   templates: Template[];
+  dayCompletions: DayCompletion[];
+  userStreak: UserStreak;
   setCards: (cards: CardsByCategory) => void;
   setDailyDeck: (deck: Card[]) => void;
   setTemplates: (templates: Template[]) => void;
-  posthog: PostHog | null;
+  setDayCompletions: (completions: DayCompletion[]) => void;
+  setUserStreak: (streak: UserStreak) => void;
 }
 
 export function useDataSync({
@@ -36,26 +43,40 @@ export function useDataSync({
   cards,
   dailyDeck,
   templates,
+  dayCompletions,
+  userStreak,
   setCards,
   setDailyDeck,
   setTemplates,
-  posthog,
+  setDayCompletions,
+  setUserStreak,
 }: DataSyncOptions): { hasLoadedOnce: boolean } {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const lastSavedCardsRef = useRef<CardsByCategory | null>(null);
   const lastSavedDailyDeckRef = useRef<Card[] | null>(null);
   const lastSavedTemplatesRef = useRef<Template[] | null>(null);
+  const lastSavedDayCompletionsRef = useRef<DayCompletion[] | null>(null);
+  const lastSavedUserStreakRef = useRef<UserStreak | null>(null);
 
   useEffect(() => {
     if (firebase.initialized && !hasLoadedOnce) {
       const loadInitialData = async () => {
         console.log('🔄 Loading data from Firebase...');
-        const { cards: loadedCards, dailyDeck: loadedDailyDeck, templates: loadedTemplates, hasData } = await firebase.loadData();
+        const {
+          cards: loadedCards,
+          dailyDeck: loadedDailyDeck,
+          templates: loadedTemplates,
+          dayCompletions: loadedDayCompletions,
+          userStreak: loadedUserStreak,
+          hasData
+        } = await firebase.loadData();
 
         console.log('📦 Loaded data:', {
           cardsCount: loadedCards ? Object.values(loadedCards).flat().length : 0,
           dailyDeckCount: loadedDailyDeck?.length || 0,
           templatesCount: loadedTemplates?.length || 0,
+          dayCompletionsCount: loadedDayCompletions?.length || 0,
+          currentStreak: loadedUserStreak?.currentStreak || 0,
           hasData
         });
 
@@ -74,22 +95,22 @@ export function useDataSync({
           lastSavedTemplatesRef.current = loadedTemplates;
         }
 
-        setHasLoadedOnce(true);
+        if (loadedDayCompletions) {
+          setDayCompletions(loadedDayCompletions);
+          lastSavedDayCompletionsRef.current = loadedDayCompletions;
+        }
 
-        posthog?.capture('app_loaded', {
-          storage_type: 'firebase',
-          user_id: firebase.getUserId(),
-          has_saved_data: hasData,
-          total_cards: loadedCards ? Object.values(loadedCards).flat().length : 0,
-          daily_deck_size: loadedDailyDeck?.length || 0,
-          templates_count: loadedTemplates?.length || 0,
-          offline_persistence_enabled: firebase.offlinePersistenceEnabled,
-        });
+        if (loadedUserStreak) {
+          setUserStreak(loadedUserStreak);
+          lastSavedUserStreakRef.current = loadedUserStreak;
+        }
+
+        setHasLoadedOnce(true);
       };
 
       loadInitialData();
     }
-  }, [firebase.initialized, hasLoadedOnce, firebase, setCards, setDailyDeck, setTemplates, posthog]);
+  }, [firebase.initialized, hasLoadedOnce, firebase, setCards, setDailyDeck, setTemplates, setDayCompletions, setUserStreak]);
 
   // Combined effect for all data syncing to reduce useEffect overhead
   useEffect(() => {
@@ -115,7 +136,19 @@ export function useDataSync({
       lastSavedTemplatesRef.current = templates;
       firebase.debouncedSaveTemplates(templates);
     }
-  }, [cards, dailyDeck, templates, firebase, hasLoadedOnce]);
+
+    // Check and save day completions
+    if (dayCompletions !== lastSavedDayCompletionsRef.current) {
+      lastSavedDayCompletionsRef.current = dayCompletions;
+      firebase.debouncedSaveDayCompletions(dayCompletions);
+    }
+
+    // Check and save user streak
+    if (userStreak !== lastSavedUserStreakRef.current) {
+      lastSavedUserStreakRef.current = userStreak;
+      firebase.debouncedSaveUserStreak(userStreak);
+    }
+  }, [cards, dailyDeck, templates, dayCompletions, userStreak, firebase, hasLoadedOnce]);
 
   useEffect(() => {
     if (!firebase.initialized || !hasLoadedOnce) return;

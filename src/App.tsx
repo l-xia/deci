@@ -3,22 +3,29 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
+import { DayCompletionModal } from './components/DayCompletionModal';
 import AuthForm from './components/AuthForm';
 import { AppHeader } from './components/AppHeader';
 import { AppProvider, useApp } from './context';
 import { useAuth } from './context/AuthContext';
 import { CATEGORIES } from './constants';
-import { isCategoryKey } from './utils/typeGuards';
+import { isCategoryKey, isCardsByCategory, isCardArray, isTemplateArray } from './utils/typeGuards';
 import { useCardModal } from './hooks/useCardModal';
-import type { Card, CategoryKey, CardsByCategory, Template } from './types';
+import type { Card, CategoryKey } from './types';
+import type { DayCompletionSummary, UserStreak } from './types/dayCompletion';
 
 function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
   const app = useApp();
 
-  const { firebase, cards, dailyDeck, templates, dragAndDrop, posthog } = app;
+  const { firebase, cards, dailyDeck, templates, dragAndDrop, dayCompletion } = app;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDayCompletionModal, setShowDayCompletionModal] = useState(false);
+  const [completionData, setCompletionData] = useState<{
+    summary: DayCompletionSummary;
+    streak: UserStreak;
+  } | null>(null);
 
   const {
     modalOpen,
@@ -39,39 +46,45 @@ function AuthenticatedApp() {
 
       const sourceCategory = updatedCard.sourceCategory;
       if (sourceCategory && isCategoryKey(sourceCategory)) {
-        cards.updateCard(sourceCategory, updatedCard.id, cardData, posthog);
+        cards.updateCard(sourceCategory, updatedCard.id, cardData);
       }
     } else if (selectedCategory) {
       if (editingCard) {
-        cards.updateCard(selectedCategory, editingCard.id, cardData, posthog);
+        cards.updateCard(selectedCategory, editingCard.id, cardData);
       } else {
-        cards.addCard(selectedCategory, cardData, posthog);
+        cards.addCard(selectedCategory, cardData);
       }
     }
     closeModal();
-  }, [editingCard, selectedCategory, editingDailyDeckIndex, cards, dailyDeck, posthog, closeModal]);
+  }, [editingCard, selectedCategory, editingDailyDeckIndex, cards, dailyDeck, closeModal]);
 
   const handleDeleteCard = useCallback((category: CategoryKey, cardId: string) => {
     if (confirm('Delete this card? This will also remove it from your daily deck if present.')) {
-      cards.deleteCard(category, cardId, posthog);
-      dailyDeck.removeCardById(cardId, posthog);
+      cards.deleteCard(category, cardId);
+      dailyDeck.removeCardById(cardId);
     }
-  }, [cards, dailyDeck, posthog]);
+  }, [cards, dailyDeck]);
 
   const handleSaveTemplate = useCallback((name: string) => {
-    templates.saveTemplate(name, dailyDeck.dailyDeck, posthog);
-  }, [templates, dailyDeck.dailyDeck, posthog]);
+    templates.saveTemplate(name, dailyDeck.dailyDeck);
+  }, [templates, dailyDeck.dailyDeck]);
 
   const handleLoadTemplate = useCallback((templateId: string) => {
     const template = templates.getTemplate(templateId);
     if (template) {
-      dailyDeck.loadFromTemplate(template.cards, cards.cards, posthog);
+      dailyDeck.loadFromTemplate(template.cards, cards.cards);
     }
-  }, [templates, dailyDeck, cards.cards, posthog]);
+  }, [templates, dailyDeck, cards.cards]);
 
   const handleDeleteTemplate = useCallback((templateId: string) => {
-    templates.deleteTemplate(templateId, posthog);
-  }, [templates, posthog]);
+    templates.deleteTemplate(templateId);
+  }, [templates]);
+
+  const handleCompleteDay = useCallback(() => {
+    const result = dayCompletion.completeDay(dailyDeck.dailyDeck);
+    setCompletionData({ summary: result.completion.summary, streak: result.streak });
+    setShowDayCompletionModal(true);
+  }, [dayCompletion, dailyDeck.dailyDeck]);
 
   const scrollToNextIncompleteCard = useCallback(() => {
     setTimeout(() => {
@@ -94,14 +107,8 @@ function AuthenticatedApp() {
     newDeck.splice(insertIndex, 0, updatedCard);
     dailyDeck.setDailyDeck(newDeck);
 
-    posthog?.capture('card_completed', {
-      card_id: card.id,
-      time_spent: updates.timeSpent,
-      suggested_duration: card.duration,
-    });
-
     scrollToNextIncompleteCard();
-  }, [dailyDeck, posthog, scrollToNextIncompleteCard]);
+  }, [dailyDeck, scrollToNextIncompleteCard]);
 
   const handleRegularCardUpdate = useCallback((index: number, updatedCard: Card) => {
     const updatedDeck = dailyDeck.dailyDeck.map((c, i) =>
@@ -124,11 +131,7 @@ function AuthenticatedApp() {
 
     newDeck.splice(insertIndex, 0, updatedCard);
     dailyDeck.setDailyDeck(newDeck);
-
-    posthog?.capture('card_marked_incomplete', {
-      card_id: card.id,
-    });
-  }, [dailyDeck, posthog]);
+  }, [dailyDeck]);
 
   const handleUpdateCard = useCallback((index: number, updates: Partial<Card>) => {
     const card = dailyDeck.dailyDeck[index];
@@ -157,12 +160,9 @@ function AuthenticatedApp() {
   const handleReturnToStack = useCallback((index: number) => {
     const card = dailyDeck.dailyDeck[index];
     if (card) {
-      dailyDeck.removeCardById(card.id, posthog);
-      posthog?.capture('card_returned_to_stack', {
-        card_id: card.id,
-      });
+      dailyDeck.removeCardById(card.id);
     }
-  }, [dailyDeck, posthog]);
+  }, [dailyDeck]);
 
   const handleRefresh = useCallback(async () => {
     if (!firebase.initialized || isRefreshing) return;
@@ -170,32 +170,31 @@ function AuthenticatedApp() {
     setIsRefreshing(true);
     try {
       const result = await firebase.loadData();
-      const loadedCards = result.cards as CardsByCategory | null;
-      const loadedDailyDeck = result.dailyDeck as Card[] | null;
-      const loadedTemplates = result.templates as Template[] | null;
 
-      if (loadedCards) {
-        cards.setCards(loadedCards);
-      }
-      if (loadedDailyDeck) {
-        dailyDeck.setDailyDeck(loadedDailyDeck);
-      }
-      if (loadedTemplates) {
-        templates.setTemplates(loadedTemplates);
+      // Validate loaded data with runtime type guards
+      if (result.cards && isCardsByCategory(result.cards)) {
+        cards.setCards(result.cards);
+      } else if (result.cards) {
+        console.error('Invalid cards data structure received from Firebase');
       }
 
-      posthog?.capture('data_refreshed', {
-        cards_count: loadedCards ? Object.values(loadedCards).flat().length : 0,
-        daily_deck_count: loadedDailyDeck?.length || 0,
-        templates_count: loadedTemplates?.length || 0,
-      });
+      if (result.dailyDeck && isCardArray(result.dailyDeck)) {
+        dailyDeck.setDailyDeck(result.dailyDeck);
+      } else if (result.dailyDeck) {
+        console.error('Invalid daily deck data structure received from Firebase');
+      }
+
+      if (result.templates && isTemplateArray(result.templates)) {
+        templates.setTemplates(result.templates);
+      } else if (result.templates) {
+        console.error('Invalid templates data structure received from Firebase');
+      }
     } catch (error) {
       console.error('Failed to refresh data:', error);
-      posthog?.capture('refresh_error', { error: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       setIsRefreshing(false);
     }
-  }, [firebase, cards, dailyDeck, templates, posthog, isRefreshing]);
+  }, [firebase, cards, dailyDeck, templates, isRefreshing]);
 
   // Memoize filtered cards to avoid recalculating on every render
   const filteredCardsByCategory = useMemo(() => {
@@ -264,6 +263,7 @@ function AuthenticatedApp() {
                 onUpdateCard={handleUpdateCard}
                 onEditCard={handleEditDailyDeckCard}
                 onReturnToStack={handleReturnToStack}
+                onCompleteDay={handleCompleteDay}
               />
             </div>
           </div>
@@ -274,6 +274,17 @@ function AuthenticatedApp() {
             card={editingCard}
             onSave={handleSaveCard}
             onClose={closeModal}
+          />
+        )}
+
+        {showDayCompletionModal && completionData && (
+          <DayCompletionModal
+            summary={completionData.summary}
+            streak={completionData.streak}
+            onClose={() => setShowDayCompletionModal(false)}
+            onStartNewDay={() => {
+              dailyDeck.setDailyDeck([]);
+            }}
           />
         )}
       </div>

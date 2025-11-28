@@ -1,4 +1,4 @@
-export type StorageKey = 'cards' | 'dailyDeck' | 'templates';
+export type StorageKey = 'cards' | 'dailyDeck' | 'templates' | 'dayCompletions' | 'userStreak';
 
 export interface FirebaseErrorType {
   code: string;

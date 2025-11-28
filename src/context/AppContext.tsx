@@ -1,8 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { usePostHog } from 'posthog-js/react';
-import type { PostHog } from 'posthog-js';
 import { useFirebase, useCards, useDailyDeck, useTemplates, useDragAndDrop } from '../hooks';
+import { useDayCompletion } from '../hooks/useDayCompletion';
 import { useDataSync } from '../hooks/useDataSync';
 import { CATEGORY_KEYS } from '../constants';
 
@@ -11,6 +10,7 @@ type CardsHook = ReturnType<typeof useCards>;
 type DailyDeckHook = ReturnType<typeof useDailyDeck>;
 type TemplatesHook = ReturnType<typeof useTemplates>;
 type DragAndDropHook = ReturnType<typeof useDragAndDrop>;
+type DayCompletionHook = ReturnType<typeof useDayCompletion>;
 
 interface AppContextValue {
   firebase: FirebaseHook;
@@ -18,7 +18,7 @@ interface AppContextValue {
   dailyDeck: DailyDeckHook;
   templates: TemplatesHook;
   dragAndDrop: DragAndDropHook;
-  posthog: PostHog | null;
+  dayCompletion: DayCompletionHook;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -35,18 +35,16 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children }: AppProviderProps) {
-  const posthog = usePostHog();
-
-  const firebase = useFirebase(posthog);
+  const firebase = useFirebase();
   const cards = useCards(INITIAL_CARDS_STATE);
   const dailyDeck = useDailyDeck([]);
   const templates = useTemplates([]);
+  const dayCompletion = useDayCompletion();
   const dragAndDrop = useDragAndDrop(
     cards.cards,
     cards.setCards,
     dailyDeck.dailyDeck,
-    dailyDeck.setDailyDeck,
-    posthog
+    dailyDeck.setDailyDeck
   );
 
   useDataSync({
@@ -54,10 +52,13 @@ export function AppProvider({ children }: AppProviderProps) {
     cards: cards.cards,
     dailyDeck: dailyDeck.dailyDeck,
     templates: templates.templates,
+    dayCompletions: dayCompletion.dayCompletions,
+    userStreak: dayCompletion.userStreak,
     setCards: cards.setCards,
     setDailyDeck: dailyDeck.setDailyDeck,
     setTemplates: templates.setTemplates,
-    posthog,
+    setDayCompletions: dayCompletion.setDayCompletions,
+    setUserStreak: dayCompletion.setUserStreak,
   });
 
   const value: AppContextValue = {
@@ -66,7 +67,7 @@ export function AppProvider({ children }: AppProviderProps) {
     dailyDeck,
     templates,
     dragAndDrop,
-    posthog,
+    dayCompletion,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
