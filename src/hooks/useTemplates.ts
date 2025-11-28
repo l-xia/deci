@@ -1,12 +1,11 @@
 import { useState, useCallback } from 'react';
-import type { PostHog } from 'posthog-js';
 import type { Template, Card, CategoryKey } from '../types';
 import { generateId } from '../utils/generateId';
 
 export function useTemplates(initialTemplates: Template[] = []) {
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
 
-  const saveTemplate = useCallback((name: string, dailyDeck: Card[], posthog: PostHog | null) => {
+  const saveTemplate = useCallback((name: string, dailyDeck: Card[]) => {
     const newTemplate: Template = {
       id: generateId('template'),
       name,
@@ -20,31 +19,16 @@ export function useTemplates(initialTemplates: Template[] = []) {
 
     setTemplates(prev => [...prev, newTemplate]);
 
-    posthog?.capture('template_created', {
-      template_id: newTemplate.id,
-      card_count: dailyDeck.length,
-    });
-
     return newTemplate;
   }, []);
 
-  const deleteTemplate = useCallback((templateId: string, posthog: PostHog | null) => {
-    setTemplates(prev => {
-      const template = prev.find(t => t.id === templateId);
-
-      posthog?.capture('template_deleted', {
-        template_id: templateId,
-        card_count: template?.cardCount || 0,
-      });
-
-      return prev.filter(t => t.id !== templateId);
-    });
+  const deleteTemplate = useCallback((templateId: string) => {
+    setTemplates(prev => prev.filter(t => t.id !== templateId));
   }, []);
 
   const updateTemplate = useCallback((
     templateId: string,
-    updates: Partial<Omit<Template, 'id' | 'createdAt'>>,
-    posthog: PostHog | null
+    updates: Partial<Omit<Template, 'id' | 'createdAt'>>
   ) => {
     setTemplates(prev =>
       prev.map(template =>
@@ -53,11 +37,6 @@ export function useTemplates(initialTemplates: Template[] = []) {
           : template
       )
     );
-
-    posthog?.capture('template_updated', {
-      template_id: templateId,
-      updated_fields: Object.keys(updates),
-    });
   }, []);
 
   const getTemplate = useCallback((templateId: string): Template | undefined => {

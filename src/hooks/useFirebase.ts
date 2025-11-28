@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { PostHog } from 'posthog-js';
 import { firebaseStorage } from '../services/firebase/storage';
 import { FirebaseStorageError, type StorageKey } from '../services/firebase/types';
 import { debounce } from '../utils/debounce';
@@ -7,7 +6,7 @@ import { DEBOUNCE_DELAY, STORAGE_KEYS } from '../constants';
 import { auth } from '../services/firebase';
 import type { SaveStatus } from '../types/common';
 
-export function useFirebase(posthog: PostHog | null) {
+export function useFirebase() {
   const [initialized, setInitialized] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [saveError, setSaveError] = useState<FirebaseStorageError | null>(null);
@@ -19,17 +18,11 @@ export function useFirebase(posthog: PostHog | null) {
 
         if (success) {
           setInitialized(true);
-          posthog?.capture('firebase_initialized', {
-            user_id: firebaseStorage.getUserId(),
-          });
         } else {
           console.error('Failed to initialize Firebase');
-          posthog?.capture('firebase_init_error');
         }
       } catch (error: unknown) {
         console.error('Unexpected error during Firebase initialization:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        posthog?.capture('firebase_init_error_unexpected', { error: errorMessage });
       }
     };
 
@@ -42,7 +35,7 @@ export function useFirebase(posthog: PostHog | null) {
     });
 
     return unsubscribe;
-  }, [posthog]);
+  }, []);
 
   // Factory function to create debounced save handlers
   const createDebouncedSave = useCallback((key: StorageKey, keyName: string) => {
@@ -57,14 +50,9 @@ export function useFirebase(posthog: PostHog | null) {
         setSaveStatus('error');
         setSaveError(result.error);
         console.error(`Failed to save ${keyName}:`, result.error);
-        posthog?.capture('save_error', {
-          key: keyName,
-          error: result.error?.message,
-          code: result.error?.code,
-        });
       }
     }, DEBOUNCE_DELAY.SAVE);
-  }, [posthog]);
+  }, []);
 
   const debouncedSaveCards = useMemo(
     () => createDebouncedSave(STORAGE_KEYS.CARDS as StorageKey, 'cards'),
@@ -81,44 +69,59 @@ export function useFirebase(posthog: PostHog | null) {
     [createDebouncedSave]
   );
 
+  const debouncedSaveDayCompletions = useMemo(
+    () => createDebouncedSave(STORAGE_KEYS.DAY_COMPLETIONS as StorageKey, 'dayCompletions'),
+    [createDebouncedSave]
+  );
+
+  const debouncedSaveUserStreak = useMemo(
+    () => createDebouncedSave(STORAGE_KEYS.USER_STREAK as StorageKey, 'userStreak'),
+    [createDebouncedSave]
+  );
+
   const loadData = useCallback(async () => {
     if (!initialized) {
-      return { cards: null, dailyDeck: null, templates: null };
+      return { cards: null, dailyDeck: null, templates: null, dayCompletions: null, userStreak: null };
     }
 
     try {
-      const [cardsResult, dailyDeckResult, templatesResult] = await Promise.all([
+      const [cardsResult, dailyDeckResult, templatesResult, dayCompletionsResult, userStreakResult] = await Promise.all([
         firebaseStorage.load(STORAGE_KEYS.CARDS as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.DAILY_DECK as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.TEMPLATES as StorageKey),
+        firebaseStorage.load(STORAGE_KEYS.DAY_COMPLETIONS as StorageKey),
+        firebaseStorage.load(STORAGE_KEYS.USER_STREAK as StorageKey),
       ]);
 
       if (!cardsResult.success) {
         console.error('Failed to load cards:', cardsResult.error);
-        posthog?.capture('data_load_error', { key: 'cards', error: cardsResult.error?.message });
       }
       if (!dailyDeckResult.success) {
         console.error('Failed to load daily deck:', dailyDeckResult.error);
-        posthog?.capture('data_load_error', { key: 'dailyDeck', error: dailyDeckResult.error?.message });
       }
       if (!templatesResult.success) {
         console.error('Failed to load templates:', templatesResult.error);
-        posthog?.capture('data_load_error', { key: 'templates', error: templatesResult.error?.message });
+      }
+      if (!dayCompletionsResult.success) {
+        console.error('Failed to load day completions:', dayCompletionsResult.error);
+      }
+      if (!userStreakResult.success) {
+        console.error('Failed to load user streak:', userStreakResult.error);
       }
 
       return {
         cards: cardsResult.data,
         dailyDeck: dailyDeckResult.data,
         templates: templatesResult.data,
+        dayCompletions: dayCompletionsResult.data || [],
+        userStreak: userStreakResult.data || { currentStreak: 0, longestStreak: 0, lastCompletionDate: '' },
         hasData: !!(cardsResult.data || dailyDeckResult.data || templatesResult.data),
       };
     } catch (error: unknown) {
       console.error('Error loading data from Firebase:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      posthog?.capture('data_load_error_unexpected', { error: errorMessage });
-      return { cards: null, dailyDeck: null, templates: null };
+      return { cards: null, dailyDeck: null, templates: null, dayCompletions: [], userStreak: { currentStreak: 0, longestStreak: 0, lastCompletionDate: '' } };
     }
-  }, [initialized, posthog]);
+  }, [initialized]);
 
   const retrySave = useCallback((cards: unknown, dailyDeck: unknown, templates: unknown) => {
     if (cards) debouncedSaveCards(cards);
@@ -136,15 +139,23 @@ export function useFirebase(posthog: PostHog | null) {
     if (debouncedSaveTemplates?.flush) {
       debouncedSaveTemplates.flush();
     }
-  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]);
+    if (debouncedSaveDayCompletions?.flush) {
+      debouncedSaveDayCompletions.flush();
+    }
+    if (debouncedSaveUserStreak?.flush) {
+      debouncedSaveUserStreak.flush();
+    }
+  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates, debouncedSaveDayCompletions, debouncedSaveUserStreak]);
 
   useEffect(() => {
     return () => {
       debouncedSaveCards?.cancel?.();
       debouncedSaveDailyDeck?.cancel?.();
       debouncedSaveTemplates?.cancel?.();
+      debouncedSaveDayCompletions?.cancel?.();
+      debouncedSaveUserStreak?.cancel?.();
     };
-  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]);
+  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates, debouncedSaveDayCompletions, debouncedSaveUserStreak]);
 
   return {
     initialized,
@@ -153,6 +164,8 @@ export function useFirebase(posthog: PostHog | null) {
     debouncedSaveCards,
     debouncedSaveDailyDeck,
     debouncedSaveTemplates,
+    debouncedSaveDayCompletions,
+    debouncedSaveUserStreak,
     loadData,
     retrySave,
     flushPendingSaves,

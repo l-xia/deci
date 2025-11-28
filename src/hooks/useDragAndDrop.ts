@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import type { PostHog } from 'posthog-js';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { Card, CardsByCategory } from '../types';
 import { isCategoryKey } from '../utils/typeGuards';
@@ -15,8 +14,7 @@ export function useDragAndDrop(
   cards: CardsByCategory,
   setCards: (cards: CardsByCategory) => void,
   dailyDeck: Card[],
-  setDailyDeck: (deck: Card[]) => void,
-  posthog: PostHog | null
+  setDailyDeck: (deck: Card[]) => void
 ) {
   // Handler: Reorder cards within daily deck
   const handleDailyDeckReorder = useCallback((source: DropResult['source'], destination: DropResult['destination']) => {
@@ -29,12 +27,7 @@ export function useDragAndDrop(
 
     newDailyDeck.splice(destination.index, 0, removed);
     setDailyDeck(newDailyDeck);
-
-    posthog?.capture('card_reordered_in_daily_deck', {
-      from_index: source.index,
-      to_index: destination.index,
-    });
-  }, [dailyDeck, setDailyDeck, posthog]);
+  }, [dailyDeck, setDailyDeck]);
 
   // Handler: Add card from category to daily deck
   const handleAddToDaily = useCallback((source: DropResult['source'], destination: DropResult['destination'], draggableId: string) => {
@@ -82,27 +75,14 @@ export function useDragAndDrop(
         newCardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 100);
-
-    posthog?.capture('card_added_to_daily_deck_via_drag', {
-      card_id: card.id,
-      source_category: sourceCategory,
-      deck_size: newDailyDeck.length,
-    });
-  }, [cards, dailyDeck, setDailyDeck, posthog]);
+  }, [cards, dailyDeck, setDailyDeck]);
 
   // Handler: Remove card from daily deck
   const handleRemoveFromDaily = useCallback((source: DropResult['source']) => {
     const newDailyDeck = Array.from(dailyDeck);
-    const [removed] = newDailyDeck.splice(source.index, 1);
+    newDailyDeck.splice(source.index, 1);
     setDailyDeck(newDailyDeck);
-
-    if (removed) {
-      posthog?.capture('card_removed_from_daily_deck_via_drag', {
-        card_id: removed.id,
-        deck_size: newDailyDeck.length,
-      });
-    }
-  }, [dailyDeck, setDailyDeck, posthog]);
+  }, [dailyDeck, setDailyDeck]);
 
   // Handler: Move card between categories
   const handleMoveCategory = useCallback((source: DropResult['source'], destination: DropResult['destination'], draggableId: string) => {
@@ -142,13 +122,7 @@ export function useDragAndDrop(
         : deckCard
     );
     setDailyDeck(updatedDailyDeck);
-
-    posthog?.capture('card_moved_between_categories', {
-      card_id: actualCardId,
-      from_category: sourceCategory,
-      to_category: destCategory,
-    });
-  }, [cards, dailyDeck, setCards, setDailyDeck, posthog]);
+  }, [cards, dailyDeck, setCards, setDailyDeck]);
 
   const onDragEnd = useCallback(
     (result: DropResult) => {

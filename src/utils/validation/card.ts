@@ -278,7 +278,7 @@ export function validateCard(cardData: CardInput): CardValidationResult {
   };
 }
 
-export function validateLoadedData(data: unknown, expectedType: 'cards' | 'dailyDeck' | 'templates'): BasicValidationResult {
+export function validateLoadedData(data: unknown, expectedType: 'cards' | 'dailyDeck' | 'templates' | 'dayCompletions' | 'userStreak'): BasicValidationResult {
   if (!data) {
     return { valid: true, error: null }; // null/undefined is fine, just means no data saved yet
   }
@@ -306,6 +306,18 @@ export function validateLoadedData(data: unknown, expectedType: 'cards' | 'daily
     case 'templates':
       if (!Array.isArray(data)) {
         return { valid: false, error: 'Templates data must be an array' };
+      }
+      return { valid: true, error: null };
+
+    case 'dayCompletions':
+      if (!Array.isArray(data)) {
+        return { valid: false, error: 'Day completions data must be an array' };
+      }
+      return { valid: true, error: null };
+
+    case 'userStreak':
+      if (typeof data !== 'object' || Array.isArray(data)) {
+        return { valid: false, error: 'User streak data must be an object' };
       }
       return { valid: true, error: null };
 

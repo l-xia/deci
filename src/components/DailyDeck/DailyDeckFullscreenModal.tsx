@@ -2,8 +2,7 @@ import { useRef } from 'react';
 import type { Card } from '../../types';
 import Timer, { type TimerRef } from '../Timer';
 import { getCategoryColors } from '../../utils/categories';
-import { formatTime } from '../../utils/formatTime';
-import { CheckIcon } from '@heroicons/react/24/outline';
+import { CompletedCardBadge } from '../CompletedCardBadge';
 
 interface DailyDeckFullscreenModalProps {
   card: Card;
@@ -67,23 +66,11 @@ function DailyDeckFullscreenModal({
           )}
 
           {card.completed && (
-            <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-              <div className="flex items-center justify-between text-green-700">
-                <div className="flex items-center gap-3">
-                  <CheckIcon className="w-6 h-6" />
-                  <span className="text-lg font-medium">
-                    {card.timeSpent !== undefined && card.timeSpent > 0
-                      ? `Completed in ${formatTime(card.timeSpent)}`
-                      : 'Completed'}
-                  </span>
-                </div>
-                {card.completedAt && (
-                  <span className="text-base text-green-600">
-                    {new Date(card.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
-              </div>
-            </div>
+            <CompletedCardBadge
+              timeSpent={card.timeSpent}
+              completedAt={card.completedAt}
+              size="lg"
+            />
           )}
         </div>
       </div>

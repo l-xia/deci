@@ -8,4 +8,6 @@ export const STORAGE_KEYS = {
   DAILY_DECK: 'dailyDeck',
   TEMPLATES: 'templates',
   USER_PREFERENCES: 'userPreferences',
+  DAY_COMPLETIONS: 'dayCompletions',
+  USER_STREAK: 'userStreak',
 };

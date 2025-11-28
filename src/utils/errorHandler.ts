@@ -1,5 +1,3 @@
-import type { PostHog } from 'posthog-js';
-
 export interface ErrorContext {
   component?: string;
   action?: string;
@@ -18,12 +16,11 @@ export class AppError extends Error {
 }
 
 /**
- * Centralized error handler that logs errors and optionally captures them with PostHog
+ * Centralized error handler that logs errors
  */
 export function handleError(
   error: unknown,
-  context: ErrorContext = {},
-  posthog?: PostHog | null
+  context: ErrorContext = {}
 ): string {
   const errorMessage = getErrorMessage(error);
   const errorCode = getErrorCode(error);
@@ -35,17 +32,6 @@ export function handleError(
     context,
     error,
   });
-
-  // Capture with PostHog if available
-  if (posthog) {
-    posthog.capture('error_occurred', {
-      error_message: errorMessage,
-      error_code: errorCode,
-      component: context.component,
-      action: context.action,
-      ...context.metadata,
-    });
-  }
 
   return errorMessage;
 }
@@ -122,14 +108,13 @@ export function formatFirebaseAuthError(error: unknown): string {
  */
 export async function withErrorHandling<T>(
   fn: () => Promise<T>,
-  context: ErrorContext = {},
-  posthog?: PostHog | null
+  context: ErrorContext = {}
 ): Promise<{ data: T | null; error: string | null }> {
   try {
     const data = await fn();
     return { data, error: null };
   } catch (error) {
-    const errorMessage = handleError(error, context, posthog);
+    const errorMessage = handleError(error, context);
     return { data: null, error: errorMessage };
   }
 }

@@ -11,6 +11,7 @@ interface DailyDeckHeaderProps {
   onLoadTemplate: (templateId: string) => void;
   onDeleteTemplate: (templateId: string) => void;
   hasDailyDeck: boolean;
+  onCompleteDay?: () => void;
 }
 
 function DailyDeckHeader({
@@ -22,6 +23,7 @@ function DailyDeckHeader({
   onLoadTemplate,
   onDeleteTemplate,
   hasDailyDeck,
+  onCompleteDay,
 }: DailyDeckHeaderProps) {
   return (
     <div className="mb-4 flex-shrink-0 flex justify-between items-start">
@@ -30,7 +32,17 @@ function DailyDeckHeader({
         <span className="absolute bottom-0 left-0 right-0 h-2 bg-blue-300 opacity-50"></span>
       </h2>
 
-      <div className="relative">
+      <div className="flex items-center gap-2">
+        {onCompleteDay && hasDailyDeck && (
+          <button
+            onClick={onCompleteDay}
+            className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+          >
+            Complete Day
+          </button>
+        )}
+
+        <div className="relative">
         <button
           onClick={onMenuToggle}
           className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -59,6 +71,7 @@ function DailyDeckHeader({
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );

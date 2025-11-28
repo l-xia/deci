@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { ArrowPathIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import deciLogo from '../assets/deci_logo.svg';
 import LoadingSpinner from './LoadingSpinner';
@@ -97,7 +98,14 @@ export const AppHeader = ({
                   className="fixed inset-0 z-10"
                   onClick={() => setUserMenuOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-30 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                  <Link
+                    to="/analytics"
+                    className="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    Analytics
+                  </Link>
                   <button
                     onClick={() => {
                       onLogout();
