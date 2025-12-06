@@ -4,6 +4,7 @@ import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import { DayCompletionModal } from './components/DayCompletionModal';
+import { TemplatePickerModal } from './components/TemplatePickerModal';
 import AuthForm from './components/AuthForm';
 import { AppHeader } from './components/AppHeader';
 import { AppProvider, useApp } from './context';
@@ -22,6 +23,7 @@ function AuthenticatedApp() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDayCompletionModal, setShowDayCompletionModal] = useState(false);
+  const [showTemplatePickerModal, setShowTemplatePickerModal] = useState(false);
   const [completionData, setCompletionData] = useState<{
     summary: DayCompletionSummary;
     streak: UserStreak;
@@ -84,7 +86,10 @@ function AuthenticatedApp() {
     const result = dayCompletion.completeDay(dailyDeck.dailyDeck);
     setCompletionData({ summary: result.completion.summary, streak: result.streak });
     setShowDayCompletionModal(true);
-  }, [dayCompletion, dailyDeck.dailyDeck]);
+
+    // Flush pending saves immediately to ensure day completion is saved
+    firebase.flushPendingSaves();
+  }, [dayCompletion, dailyDeck.dailyDeck, firebase]);
 
   const scrollToNextIncompleteCard = useCallback(() => {
     setTimeout(() => {
@@ -160,9 +165,20 @@ function AuthenticatedApp() {
   const handleReturnToStack = useCallback((index: number) => {
     const card = dailyDeck.dailyDeck[index];
     if (card) {
+      // Clear daily note and timer state when returning card to stack
+      if (card.sourceCategory && isCategoryKey(card.sourceCategory)) {
+        const updates: Partial<Card> = {};
+        if (card.dailyNote) updates.dailyNote = '';
+        if (card.timerState) updates.timerState = { accumulatedSeconds: 0, isPaused: true };
+
+        if (Object.keys(updates).length > 0) {
+          cards.updateCard(card.sourceCategory, card.id, updates);
+        }
+      }
+
       dailyDeck.removeCardById(card.id);
     }
-  }, [dailyDeck]);
+  }, [dailyDeck, cards]);
 
   const handleRefresh = useCallback(async () => {
     if (!firebase.initialized || isRefreshing) return;
@@ -283,8 +299,28 @@ function AuthenticatedApp() {
             streak={completionData.streak}
             onClose={() => setShowDayCompletionModal(false)}
             onStartNewDay={() => {
-              dailyDeck.setDailyDeck([]);
+              setShowDayCompletionModal(false);
+              if (templates.templates.length > 0) {
+                setShowTemplatePickerModal(true);
+              } else {
+                dailyDeck.setDailyDeck([]);
+              }
             }}
+          />
+        )}
+
+        {showTemplatePickerModal && (
+          <TemplatePickerModal
+            templates={templates.templates}
+            onSelectTemplate={(templateId) => {
+              handleLoadTemplate(templateId);
+              setShowTemplatePickerModal(false);
+            }}
+            onSkip={() => {
+              dailyDeck.setDailyDeck([]);
+              setShowTemplatePickerModal(false);
+            }}
+            onClose={() => setShowTemplatePickerModal(false)}
           />
         )}
       </div>

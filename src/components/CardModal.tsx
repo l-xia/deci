@@ -146,7 +146,7 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
               {...register('description')}
               maxLength={VALIDATION_RULES.DESCRIPTION_MAX_LENGTH}
               rows={3}
-              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent resize-none ${
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent resize-y ${
                 errors.description
                   ? 'border-red-500 focus:ring-red-500'
                   : 'border-gray-300 focus:ring-blue-500'

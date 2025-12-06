@@ -1,6 +1,6 @@
-import { EllipsisHorizontalIcon } from '@heroicons/react/24/solid';
 import type { Template } from '../../types';
 import TemplateManager from '../TemplateManager';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 
 interface DailyDeckHeaderProps {
   menuOpen: boolean;
@@ -45,10 +45,10 @@ function DailyDeckHeader({
         <div className="relative">
         <button
           onClick={onMenuToggle}
-          className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="p-1 text-gray-600 hover:text-gray-900 transition-colors"
           title="Menu"
         >
-          <EllipsisHorizontalIcon className="w-6 h-6" />
+          <EllipsisVerticalIcon className="w-6 h-6" />
         </button>
 
         {menuOpen && (
