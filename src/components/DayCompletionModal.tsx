@@ -140,8 +140,8 @@ export function DayCompletionModal({ summary, streak, onClose, onStartNewDay }: 
             {onStartNewDay && (
               <button
                 onClick={() => {
-                  onStartNewDay();
                   onClose();
+                  onStartNewDay();  // This will now trigger template picker
                 }}
                 className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors font-medium"
               >

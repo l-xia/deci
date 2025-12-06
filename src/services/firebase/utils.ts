@@ -29,9 +29,31 @@ export async function retryWithBackoff<T>(
   throw new Error('Retry failed');
 }
 
+function removeUndefinedValues(obj: unknown): unknown {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefinedValues(item));
+  }
+
+  if (typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        result[key] = removeUndefinedValues(value);
+      }
+    }
+    return result;
+  }
+
+  return obj;
+}
+
 export function createDataToSave(data: unknown) {
   return {
-    data,
+    data: removeUndefinedValues(data),
     savedAt: new Date().toISOString(),
     version: '1.0.0',
   };

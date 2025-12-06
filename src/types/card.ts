@@ -7,6 +7,13 @@ export interface ScheduleConfig {
   timezone?: string; // Optional timezone (defaults to local)
 }
 
+export interface TimerState {
+  startedAt?: string;           // ISO timestamp when timer started
+  pausedAt?: string;            // ISO timestamp when timer paused/stopped
+  accumulatedSeconds: number;   // Total elapsed time
+  isPaused: boolean;            // Current pause state
+}
+
 export interface Card {
   id: string;
   title: string;
@@ -21,6 +28,8 @@ export interface Card {
   timeSpent?: number;
   completedAt?: string;
   sourceCategory?: CategoryKey;
+  dailyNote?: string;              // Daily deck specific notes, max 500 chars
+  timerState?: TimerState;         // Synced timer state across devices
 }
 
 export interface CardsByCategory {

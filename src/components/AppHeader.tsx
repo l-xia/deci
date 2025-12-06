@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { ArrowPathIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChartBarIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import deciLogo from '../assets/deci_logo.svg';
 import LoadingSpinner from './LoadingSpinner';
 import type { SaveStatus } from '../types/common';
@@ -98,12 +98,13 @@ export const AppHeader = ({
                   className="fixed inset-0 z-10"
                   onClick={() => setUserMenuOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                <div className="absolute right-0 mt-2 w-30 bg-white border border-gray-200 rounded-md shadow-lg z-20">
                   <Link
                     to="/analytics"
                     className="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     onClick={() => setUserMenuOpen(false)}
                   >
+                    <ChartBarIcon className="w-4 h-4 inline-block mr-2" />
                     Analytics
                   </Link>
                   <button
@@ -113,6 +114,7 @@ export const AppHeader = ({
                     }}
                     className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                   >
+                    <ArrowRightOnRectangleIcon className="w-4 h-4 inline-block mr-2" />
                     Sign out
                   </button>
                 </div>

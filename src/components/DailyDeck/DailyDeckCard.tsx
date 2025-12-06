@@ -7,6 +7,56 @@ import { formatScheduleDescription } from '../../utils/scheduling';
 import { CheckIcon } from '@heroicons/react/24/outline';
 import CardContextMenu from './CardContextMenu';
 import { CompletedCardBadge } from '../CompletedCardBadge';
+import { useLongPress } from '../../hooks/useLongPress';
+
+interface DailyNoteEditorProps {
+  value: string;
+  onChange: (note: string) => void;
+  maxLength: number;
+}
+
+function DailyNoteEditor({ value, onChange, maxLength }: DailyNoteEditorProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [localValue, setLocalValue] = useState(value);
+
+  const handleSave = () => {
+    onChange(localValue);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
+        <textarea
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={handleSave}
+          maxLength={maxLength}
+          className="w-full text-sm border-0 bg-transparent focus:ring-0 resize-none"
+          placeholder="Add a note for this task today..."
+          autoFocus
+          rows={2}
+        />
+        <div className="text-xs text-gray-500 text-right mt-1">
+          {localValue.length}/{maxLength}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => setIsEditing(true)}
+      className="bg-yellow-50 border border-yellow-200 rounded p-2 cursor-pointer hover:bg-yellow-100 transition-colors"
+    >
+      {value ? (
+        <p className="text-sm text-gray-700 whitespace-pre-line">{value}</p>
+      ) : (
+        <p className="text-sm text-gray-400 italic">Add daily note...</p>
+      )}
+    </div>
+  );
+}
 
 interface DailyDeckCardProps {
   card: Card;
@@ -28,13 +78,27 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
   const borderColor = colors.border;
   const highlightColor = colors.highlight;
 
+  const longPressHandlers = useLongPress({
+    onLongPress: (e) => {
+      const clientX = 'touches' in e ? e.touches[0]?.clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0]?.clientY : e.clientY;
+      setContextMenu({ x: clientX || 0, y: clientY || 0 });
+    },
+    delay: 500,
+  });
+
   const handleMarkComplete = () => {
     const timeSpent = timerRef.current?.getSeconds() || 0;
-    onUpdateCard(index, {
+    const updates: Partial<Card> = {
       completed: true,
       completedAt: new Date().toISOString(),
       timeSpent,
-    });
+    };
+    // Clear timer state by resetting it
+    if (card.timerState) {
+      updates.timerState = { accumulatedSeconds: 0, isPaused: true };
+    }
+    onUpdateCard(index, updates);
     // Collapse after marking complete
     if (isExpanded) {
       onToggleExpanded();
@@ -66,7 +130,8 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
           // Override the drag handle's onContextMenu to show our custom menu
           const dragHandleProps = {
             ...provided.dragHandleProps,
-            onContextMenu: handleContextMenu,
+            onContextMenu: handleContextMenu,  // Desktop right-click
+            ...longPressHandlers,               // Mobile long-press
           };
 
           return (
@@ -131,11 +196,21 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
                     </div>
                   )}
 
+                  {/* Daily Note Section */}
+                  <div className="mt-3">
+                    <DailyNoteEditor
+                      value={card.dailyNote || ''}
+                      onChange={(note) => onUpdateCard(index, { dailyNote: note })}
+                      maxLength={500}
+                    />
+                  </div>
+
                   {!card.completed && (
                     <Timer
                       ref={timerRef}
                       card={card}
                       onComplete={handleMarkComplete}
+                      onTimerStateChange={(state) => onUpdateCard(index, { timerState: state })}
                     />
                   )}
 

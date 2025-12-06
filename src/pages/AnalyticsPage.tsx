@@ -5,10 +5,19 @@ import { useApp } from '../context';
 import type { CategoryKey } from '../types';
 import { getCategoryColors } from '../utils/categories';
 import { formatDuration, formatDate, getDateRange } from '../utils/date';
+import { TimeTrendsSection } from '../components/Analytics/TimeTrendsSection';
+import { CompletionInsightsSection } from '../components/Analytics/CompletionInsightsSection';
+import { CardAnalyticsSection } from '../components/Analytics/CardAnalyticsSection';
+import { TimeOfDaySection } from '../components/Analytics/TimeOfDaySection';
 
 export default function AnalyticsPage() {
-  const { dayCompletion } = useApp();
+  const { dayCompletion, cards } = useApp();
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('30d');
+
+  // Flatten all cards from all categories
+  const allCards = useMemo(() => {
+    return Object.values(cards.cards).flat();
+  }, [cards.cards]);
 
   // Filter completions by time range
   const filteredCompletions = useMemo(() => {
@@ -51,9 +60,9 @@ export default function AnalyticsPage() {
   }, [filteredCompletions]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen overflow-hidden bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4 mb-4">
             <Link
@@ -102,7 +111,8 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {filteredCompletions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No data for this time period</p>
@@ -153,6 +163,18 @@ export default function AnalyticsPage() {
                 <div className="text-3xl font-bold text-gray-900">{stats.avgCardsPerDay}</div>
               </div>
             </div>
+
+            {/* Time Trends Section */}
+            <TimeTrendsSection completions={filteredCompletions} timeRange={timeRange} />
+
+            {/* Completion Insights Section */}
+            <CompletionInsightsSection completions={filteredCompletions} timeRange={timeRange} />
+
+            {/* Card-Level Analytics Section */}
+            <CardAnalyticsSection completions={filteredCompletions} allCards={allCards} />
+
+            {/* Time-of-Day Patterns Section */}
+            <TimeOfDaySection completions={filteredCompletions} />
 
             {/* Category Breakdown */}
             {stats.categoryTotals.size > 0 && (
@@ -221,6 +243,7 @@ export default function AnalyticsPage() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
