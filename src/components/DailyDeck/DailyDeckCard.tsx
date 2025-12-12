@@ -9,55 +9,6 @@ import CardContextMenu from './CardContextMenu';
 import { CompletedCardBadge } from '../CompletedCardBadge';
 import { useLongPress } from '../../hooks/useLongPress';
 
-interface DailyNoteEditorProps {
-  value: string;
-  onChange: (note: string) => void;
-  maxLength: number;
-}
-
-function DailyNoteEditor({ value, onChange, maxLength }: DailyNoteEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [localValue, setLocalValue] = useState(value);
-
-  const handleSave = () => {
-    onChange(localValue);
-    setIsEditing(false);
-  };
-
-  if (isEditing) {
-    return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
-        <textarea
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={handleSave}
-          maxLength={maxLength}
-          className="w-full text-sm border-0 bg-transparent focus:ring-0 resize-none"
-          placeholder="Add a note for this task today..."
-          autoFocus
-          rows={2}
-        />
-        <div className="text-xs text-gray-500 text-right mt-1">
-          {localValue.length}/{maxLength}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={() => setIsEditing(true)}
-      className="bg-yellow-50 border border-yellow-200 rounded p-2 cursor-pointer hover:bg-yellow-100 transition-colors"
-    >
-      {value ? (
-        <p className="text-sm text-gray-700 whitespace-pre-line">{value}</p>
-      ) : (
-        <p className="text-sm text-gray-400 italic">Add daily note...</p>
-      )}
-    </div>
-  );
-}
-
 interface DailyDeckCardProps {
   card: Card;
   index: number;
@@ -66,11 +17,12 @@ interface DailyDeckCardProps {
   onToggleExpanded: () => void;
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
   onEditCard: (index: number) => void;
+  onOneTimeEdit: (index: number) => void;
   onDoubleClick: (index: number) => void;
   onReturnToStack?: (index: number) => void;
 }
 
-function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExpanded, onUpdateCard, onEditCard, onDoubleClick, onReturnToStack }: DailyDeckCardProps) {
+function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExpanded, onUpdateCard, onEditCard, onOneTimeEdit, onDoubleClick, onReturnToStack }: DailyDeckCardProps) {
   const timerRef = useRef<TimerRef>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const isFirstCard = isFirstIncomplete && !card.completed;
@@ -121,6 +73,10 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
     if (onReturnToStack) {
       onReturnToStack(index);
     }
+  };
+
+  const handleOneTimeEdit = () => {
+    onOneTimeEdit(index);
   };
 
   return (
@@ -196,15 +152,6 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
                     </div>
                   )}
 
-                  {/* Daily Note Section */}
-                  <div className="mt-3">
-                    <DailyNoteEditor
-                      value={card.dailyNote || ''}
-                      onChange={(note) => onUpdateCard(index, { dailyNote: note })}
-                      maxLength={500}
-                    />
-                  </div>
-
                   {!card.completed && (
                     <Timer
                       ref={timerRef}
@@ -260,6 +207,7 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
         x={contextMenu.x}
         y={contextMenu.y}
         isCompleted={!!card.completed}
+        onOneTimeEdit={handleOneTimeEdit}
         onEdit={() => onEditCard(index)}
         onMarkComplete={handleMarkComplete}
         onMarkIncomplete={handleMarkIncomplete}

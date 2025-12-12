@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   PencilIcon,
+  PencilSquareIcon,
   CheckIcon,
   ArrowLeftIcon,
   XMarkIcon
@@ -11,6 +12,7 @@ interface CardContextMenuProps {
   x: number;
   y: number;
   isCompleted: boolean;
+  onOneTimeEdit: () => void;
   onEdit: () => void;
   onMarkComplete: () => void;
   onMarkIncomplete: () => void;
@@ -22,6 +24,7 @@ function CardContextMenu({
   x,
   y,
   isCompleted,
+  onOneTimeEdit,
   onEdit,
   onMarkComplete,
   onMarkIncomplete,
@@ -70,8 +73,17 @@ function CardContextMenu({
 
   const menuItems = [
     {
-      label: 'Edit',
+      label: 'One-time edit (today)',
       icon: PencilIcon,
+      onClick: () => {
+        onOneTimeEdit();
+        onClose();
+      },
+      show: true,
+    },
+    {
+      label: 'Edit card in stack',
+      icon: PencilSquareIcon,
       onClick: () => {
         onEdit();
         onClose();

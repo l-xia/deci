@@ -11,6 +11,7 @@ interface DailyDeckProps {
   cards: Card[];
   onUpdateCard: (index: number, updates: Partial<Card>) => void;
   onEditCard: (index: number) => void;
+  onOneTimeEditCard: (index: number) => void;
   onReturnToStack?: (index: number) => void;
   templates: Template[];
   onSaveTemplate: (name: string) => void;
@@ -23,6 +24,7 @@ function DailyDeck({
   cards,
   onUpdateCard,
   onEditCard,
+  onOneTimeEditCard,
   onReturnToStack,
   templates,
   onSaveTemplate,
@@ -133,6 +135,7 @@ function DailyDeck({
                         onToggleExpanded={() => setManuallyExpandedIndex(isExpanded ? null : index)}
                         onUpdateCard={onUpdateCard}
                         onEditCard={onEditCard}
+                        onOneTimeEdit={onOneTimeEditCard}
                         {...(onReturnToStack && { onReturnToStack })}
                         onDoubleClick={handleDoubleClick}
                       />
