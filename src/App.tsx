@@ -34,23 +34,30 @@ function AuthenticatedApp() {
     editingCard,
     selectedCategory,
     editingDailyDeckIndex,
+    isOneTimeEdit,
     openModal,
     openDailyDeckCardModal,
+    openOneTimeEditModal,
     closeModal,
   } = useCardModal();
 
   const handleSaveCard = useCallback((cardData: Partial<Card>) => {
     if (editingDailyDeckIndex !== null) {
+      // Update daily deck instance
       const updatedCard = { ...dailyDeck.dailyDeck[editingDailyDeckIndex], ...cardData } as Card;
       const updatedDeck = [...dailyDeck.dailyDeck];
       updatedDeck[editingDailyDeckIndex] = updatedCard;
       dailyDeck.setDailyDeck(updatedDeck);
 
-      const sourceCategory = updatedCard.sourceCategory;
-      if (sourceCategory && isCategoryKey(sourceCategory)) {
-        cards.updateCard(sourceCategory, updatedCard.id, cardData);
+      // Only update source card if NOT one-time edit
+      if (!isOneTimeEdit) {
+        const sourceCategory = updatedCard.sourceCategory;
+        if (sourceCategory && isCategoryKey(sourceCategory)) {
+          cards.updateCard(sourceCategory, updatedCard.id, cardData);
+        }
       }
     } else if (selectedCategory) {
+      // Normal stack card editing
       if (editingCard) {
         cards.updateCard(selectedCategory, editingCard.id, cardData);
       } else {
@@ -58,7 +65,7 @@ function AuthenticatedApp() {
       }
     }
     closeModal();
-  }, [editingCard, selectedCategory, editingDailyDeckIndex, cards, dailyDeck, closeModal]);
+  }, [editingCard, selectedCategory, editingDailyDeckIndex, isOneTimeEdit, cards, dailyDeck, closeModal]);
 
   const handleDeleteCard = useCallback((category: CategoryKey, cardId: string) => {
     if (confirm('Delete this card? This will also remove it from your daily deck if present.')) {
@@ -161,6 +168,13 @@ function AuthenticatedApp() {
       openDailyDeckCardModal(card, index);
     }
   }, [dailyDeck.dailyDeck, openDailyDeckCardModal]);
+
+  const handleOneTimeEditDailyDeckCard = useCallback((index: number) => {
+    const card = dailyDeck.dailyDeck[index];
+    if (card) {
+      openOneTimeEditModal(card, index);
+    }
+  }, [dailyDeck.dailyDeck, openOneTimeEditModal]);
 
   const handleReturnToStack = useCallback((index: number) => {
     const card = dailyDeck.dailyDeck[index];
@@ -278,6 +292,7 @@ function AuthenticatedApp() {
                 onDeleteTemplate={handleDeleteTemplate}
                 onUpdateCard={handleUpdateCard}
                 onEditCard={handleEditDailyDeckCard}
+                onOneTimeEditCard={handleOneTimeEditDailyDeckCard}
                 onReturnToStack={handleReturnToStack}
                 onCompleteDay={handleCompleteDay}
               />
@@ -288,6 +303,7 @@ function AuthenticatedApp() {
         {modalOpen && (
           <CardModal
             card={editingCard}
+            isOneTimeEdit={isOneTimeEdit}
             onSave={handleSaveCard}
             onClose={closeModal}
           />

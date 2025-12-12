@@ -10,11 +10,12 @@ import { SCHEDULE_PRESETS } from '../utils/scheduling';
 
 interface CardModalProps {
   card?: Card | null;
+  isOneTimeEdit?: boolean;
   onSave: (cardData: Partial<Card>) => void;
   onClose: () => void;
 }
 
-function CardModal({ card, onSave, onClose }: CardModalProps) {
+function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalProps) {
   const [scheduleType, setScheduleType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
 
@@ -96,7 +97,7 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
       <div className="bg-white rounded-md shadow-2xl max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">
-            {card ? 'Edit Card' : 'New Card'}
+            {isOneTimeEdit ? 'Edit Card (Today Only)' : card ? 'Edit Card' : 'New Card'}
           </h2>
           <button
             onClick={onClose}
@@ -107,35 +108,37 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="title"
-              {...register('title')}
-              maxLength={VALIDATION_RULES.TITLE_MAX_LENGTH}
-              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent ${
-                errors.title
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:ring-blue-500'
-              }`}
-              placeholder="e.g., Walk the dog"
-            />
-            <div className="flex justify-between items-center mt-1">
-              {errors.title ? (
-                <p className="text-xs text-red-500">
-                  {errors.title.message}
-                </p>
-              ) : (
-                <div></div>
-              )}
-              <span className="text-xs text-gray-400">
-                {title?.length || 0}/{VALIDATION_RULES.TITLE_MAX_LENGTH}
-              </span>
+          {!isOneTimeEdit && (
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="title"
+                {...register('title')}
+                maxLength={VALIDATION_RULES.TITLE_MAX_LENGTH}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent ${
+                  errors.title
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+                placeholder="e.g., Walk the dog"
+              />
+              <div className="flex justify-between items-center mt-1">
+                {errors.title ? (
+                  <p className="text-xs text-red-500">
+                    {errors.title.message}
+                  </p>
+                ) : (
+                  <div></div>
+                )}
+                <span className="text-xs text-gray-400">
+                  {title?.length || 0}/{VALIDATION_RULES.TITLE_MAX_LENGTH}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
@@ -195,108 +198,110 @@ function CardModal({ card, onSave, onClose }: CardModalProps) {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Recurrence Type
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="always"
-                  {...register('recurrenceType')}
-                  className="mt-1"
-                />
-                <div>
-                  <div className="font-medium text-sm">Always Available</div>
-                  <div className="text-xs text-gray-500">Can be added to daily deck unlimited times (e.g., Reading)</div>
-                </div>
+          {!isOneTimeEdit && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Recurrence Type
               </label>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="always"
+                    {...register('recurrenceType')}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="font-medium text-sm">Always Available</div>
+                    <div className="text-xs text-gray-500">Can be added to daily deck unlimited times (e.g., Reading)</div>
+                  </div>
+                </label>
 
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="limited"
-                  {...register('recurrenceType')}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-sm">Limited Uses</div>
-                  <div className="text-xs text-gray-500 mb-1">Can be added X times per day (e.g., Walk dog 3x)</div>
-                  {recurrenceType === 'limited' && (
-                    <div className="mt-1">
-                      <input
-                        type="number"
-                        {...register('maxUses')}
-                        min={VALIDATION_RULES.MAX_USES_MIN}
-                        max={VALIDATION_RULES.MAX_USES_MAX}
-                        className={`w-20 px-2 py-1 border rounded-md text-sm ${
-                          errors.maxUses
-                            ? 'border-red-500'
-                            : 'border-gray-300'
-                        }`}
-                        placeholder="3"
-                      />
-                      {errors.maxUses && (
-                        <p className="text-xs text-red-500 mt-1">
-                          {errors.maxUses.message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="limited"
+                    {...register('recurrenceType')}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">Limited Uses</div>
+                    <div className="text-xs text-gray-500 mb-1">Can be added X times per day (e.g., Walk dog 3x)</div>
+                    {recurrenceType === 'limited' && (
+                      <div className="mt-1">
+                        <input
+                          type="number"
+                          {...register('maxUses')}
+                          min={VALIDATION_RULES.MAX_USES_MIN}
+                          max={VALIDATION_RULES.MAX_USES_MAX}
+                          className={`w-20 px-2 py-1 border rounded-md text-sm ${
+                            errors.maxUses
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                          placeholder="3"
+                        />
+                        {errors.maxUses && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {errors.maxUses.message}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </label>
 
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="once"
-                  {...register('recurrenceType')}
-                  className="mt-1"
-                />
-                <div>
-                  <div className="font-medium text-sm">One-Time Only</div>
-                  <div className="text-xs text-gray-500">Disappears after being added once (e.g., Take out trash)</div>
-                </div>
-              </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="once"
+                    {...register('recurrenceType')}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="font-medium text-sm">One-Time Only</div>
+                    <div className="text-xs text-gray-500">Disappears after being added once (e.g., Take out trash)</div>
+                  </div>
+                </label>
 
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="scheduled"
-                  {...register('recurrenceType')}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-sm">Scheduled</div>
-                  <div className="text-xs text-gray-500 mb-2">Only available on specific days (e.g., Team meeting every Monday)</div>
-                  {recurrenceType === 'scheduled' && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded-md">
-                      <ScheduleSelector
-                        scheduleType={scheduleType}
-                        selectedDays={scheduleDays}
-                        onChange={(days) => {
-                          setScheduleDays(days);
-                          setValue('scheduleDays', days);
-                        }}
-                        onScheduleTypeChange={(type) => {
-                          setScheduleType(type);
-                          setScheduleDays([]);
-                          setValue('scheduleType', type);
-                          setValue('scheduleDays', []);
-                        }}
-                      />
-                      {errors.scheduleDays && (
-                        <p className="text-xs text-red-500 mt-2">
-                          {errors.scheduleDays.message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="scheduled"
+                    {...register('recurrenceType')}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">Scheduled</div>
+                    <div className="text-xs text-gray-500 mb-2">Only available on specific days (e.g., Team meeting every Monday)</div>
+                    {recurrenceType === 'scheduled' && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                        <ScheduleSelector
+                          scheduleType={scheduleType}
+                          selectedDays={scheduleDays}
+                          onChange={(days) => {
+                            setScheduleDays(days);
+                            setValue('scheduleDays', days);
+                          }}
+                          onScheduleTypeChange={(type) => {
+                            setScheduleType(type);
+                            setScheduleDays([]);
+                            setValue('scheduleType', type);
+                            setValue('scheduleDays', []);
+                          }}
+                        />
+                        {errors.scheduleDays && (
+                          <p className="text-xs text-red-500 mt-2">
+                            {errors.scheduleDays.message}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
