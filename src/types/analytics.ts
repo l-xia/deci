@@ -47,6 +47,7 @@ export interface RecurrenceDistribution {
   type: RecurrenceType | 'always';
   count: number;
   percentage: number;
+  [key: string]: string | number;
 }
 
 export interface HourDistribution {
@@ -60,6 +61,7 @@ export interface TimePeriodData {
   count: number;
   percentage: number;
   hourRange: string;
+  [key: string]: string | number;
 }
 
 export interface ChartDimensions {

@@ -8,10 +8,10 @@ export interface ScheduleConfig {
 }
 
 export interface TimerState {
-  startedAt?: string;           // ISO timestamp when timer started
-  pausedAt?: string;            // ISO timestamp when timer paused/stopped
-  accumulatedSeconds: number;   // Total elapsed time
-  isPaused: boolean;            // Current pause state
+  startedAt?: string | undefined; // ISO timestamp when timer started
+  pausedAt?: string | undefined; // ISO timestamp when timer paused/stopped
+  accumulatedSeconds: number; // Total elapsed time
+  isPaused: boolean; // Current pause state
 }
 
 export interface Card {
@@ -28,8 +28,8 @@ export interface Card {
   timeSpent?: number;
   completedAt?: string;
   sourceCategory?: CategoryKey;
-  dailyNote?: string;              // Daily deck specific notes, max 500 chars
-  timerState?: TimerState;         // Synced timer state across devices
+  dailyNote?: string; // Daily deck specific notes, max 500 chars
+  timerState?: TimerState; // Synced timer state across devices
 }
 
 export interface CardsByCategory {

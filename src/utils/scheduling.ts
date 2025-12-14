@@ -1,5 +1,4 @@
 import { rrulestr } from 'rrule';
-import { startOfDay, endOfDay } from 'date-fns';
 import type { ScheduleConfig } from '../types/card';
 
 /**
@@ -11,8 +10,16 @@ export function isCardAvailableOnDate(
 ): boolean {
   try {
     const rule = rrulestr(scheduleConfig.rrule);
-    const dayStart = startOfDay(date);
-    const dayEnd = endOfDay(date);
+
+    // Use UTC to avoid timezone issues between RRule (UTC) and date-fns (local timezone)
+    // Get the calendar date in local timezone
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+
+    // Create start and end of day in UTC for that calendar date
+    const dayStart = new Date(Date.UTC(year, month, day, 0, 0, 0));
+    const dayEnd = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
 
     // Check if any occurrences fall within this day
     const occurrences = rule.between(dayStart, dayEnd, true);
@@ -26,7 +33,9 @@ export function isCardAvailableOnDate(
 /**
  * Format schedule config into human-readable description
  */
-export function formatScheduleDescription(scheduleConfig: ScheduleConfig): string {
+export function formatScheduleDescription(
+  scheduleConfig: ScheduleConfig
+): string {
   try {
     const rule = rrulestr(scheduleConfig.rrule);
     return rule.toText();
@@ -45,7 +54,7 @@ export const SCHEDULE_PRESETS = {
   weekends: 'FREQ=WEEKLY;BYDAY=SA,SU',
   weekly: (days: number[]) => {
     const dayMap = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-    const byDay = days.map(d => dayMap[d]).join(',');
+    const byDay = days.map((d) => dayMap[d]).join(',');
     return `FREQ=WEEKLY;BYDAY=${byDay}`;
   },
   monthly: (dates: number[]) => {
@@ -71,7 +80,10 @@ export const DAYS_OF_WEEK = [
 /**
  * Get next occurrence of a scheduled card
  */
-export function getNextOccurrence(scheduleConfig: ScheduleConfig, after: Date = new Date()): Date | null {
+export function getNextOccurrence(
+  scheduleConfig: ScheduleConfig,
+  after: Date = new Date()
+): Date | null {
   try {
     const rule = rrulestr(scheduleConfig.rrule);
     return rule.after(after, true);

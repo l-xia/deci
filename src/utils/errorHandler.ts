@@ -1,6 +1,10 @@
 export interface ErrorContext {
   component?: string;
   action?: string;
+  context?: string;
+  source?: string;
+  lineno?: number;
+  colno?: number;
   metadata?: Record<string, unknown>;
 }
 
@@ -94,13 +98,15 @@ export function formatFirebaseAuthError(error: unknown): string {
     'auth/wrong-password': 'Incorrect password.',
     'auth/email-already-in-use': 'An account already exists with this email.',
     'auth/weak-password': 'Password should be at least 6 characters.',
-    'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
-    'auth/operation-not-allowed': 'Email/password accounts are not enabled. Please contact support.',
+    'auth/too-many-requests':
+      'Too many failed attempts. Please try again later.',
+    'auth/operation-not-allowed':
+      'Email/password accounts are not enabled. Please contact support.',
     'auth/internal-error': 'An internal error occurred. Please try again.',
     'auth/invalid-credential': 'Invalid email or password.',
   };
 
-  return code ? (errorMessages[code] || originalMessage) : originalMessage;
+  return code ? errorMessages[code] || originalMessage : originalMessage;
 }
 
 /**

@@ -1,10 +1,20 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { firebaseStorage } from '../services/firebase/storage';
-import { FirebaseStorageError, type StorageKey } from '../services/firebase/types';
+import {
+  FirebaseStorageError,
+  type StorageKey,
+} from '../services/firebase/types';
 import { debounce } from '../utils/debounce';
 import { DEBOUNCE_DELAY, STORAGE_KEYS } from '../constants';
 import { auth } from '../services/firebase';
 import type { SaveStatus } from '../types/common';
+import type {
+  CardsByCategory,
+  Card,
+  Template,
+  DayCompletion,
+  UserStreak,
+} from '../types';
 
 export function useFirebase() {
   const [initialized, setInitialized] = useState(false);
@@ -22,7 +32,10 @@ export function useFirebase() {
           console.error('Failed to initialize Firebase');
         }
       } catch (error: unknown) {
-        console.error('Unexpected error during Firebase initialization:', error);
+        console.error(
+          'Unexpected error during Firebase initialization:',
+          error
+        );
       }
     };
 
@@ -38,21 +51,24 @@ export function useFirebase() {
   }, []);
 
   // Factory function to create debounced save handlers
-  const createDebouncedSave = useCallback((key: StorageKey, keyName: string) => {
-    return debounce(async (data: unknown) => {
-      console.log(`⏰ Debounce timer expired for ${keyName}, saving now...`);
-      setSaveStatus('saving');
-      const result = await firebaseStorage.save(key, data);
-      if (result.success) {
-        setSaveStatus('saved');
-        setSaveError(null);
-      } else {
-        setSaveStatus('error');
-        setSaveError(result.error);
-        console.error(`Failed to save ${keyName}:`, result.error);
-      }
-    }, DEBOUNCE_DELAY.SAVE);
-  }, []);
+  const createDebouncedSave = useCallback(
+    (key: StorageKey, keyName: string) => {
+      return debounce(async (data: unknown) => {
+        console.log(`⏰ Debounce timer expired for ${keyName}, saving now...`);
+        setSaveStatus('saving');
+        const result = await firebaseStorage.save(key, data);
+        if (result.success) {
+          setSaveStatus('saved');
+          setSaveError(null);
+        } else {
+          setSaveStatus('error');
+          setSaveError(result.error);
+          console.error(`Failed to save ${keyName}:`, result.error);
+        }
+      }, DEBOUNCE_DELAY.SAVE);
+    },
+    []
+  );
 
   const debouncedSaveCards = useMemo(
     () => createDebouncedSave(STORAGE_KEYS.CARDS as StorageKey, 'cards'),
@@ -60,32 +76,58 @@ export function useFirebase() {
   );
 
   const debouncedSaveDailyDeck = useMemo(
-    () => createDebouncedSave(STORAGE_KEYS.DAILY_DECK as StorageKey, 'dailyDeck'),
+    () =>
+      createDebouncedSave(STORAGE_KEYS.DAILY_DECK as StorageKey, 'dailyDeck'),
     [createDebouncedSave]
   );
 
   const debouncedSaveTemplates = useMemo(
-    () => createDebouncedSave(STORAGE_KEYS.TEMPLATES as StorageKey, 'templates'),
+    () =>
+      createDebouncedSave(STORAGE_KEYS.TEMPLATES as StorageKey, 'templates'),
     [createDebouncedSave]
   );
 
   const debouncedSaveDayCompletions = useMemo(
-    () => createDebouncedSave(STORAGE_KEYS.DAY_COMPLETIONS as StorageKey, 'dayCompletions'),
+    () =>
+      createDebouncedSave(
+        STORAGE_KEYS.DAY_COMPLETIONS as StorageKey,
+        'dayCompletions'
+      ),
     [createDebouncedSave]
   );
 
   const debouncedSaveUserStreak = useMemo(
-    () => createDebouncedSave(STORAGE_KEYS.USER_STREAK as StorageKey, 'userStreak'),
+    () =>
+      createDebouncedSave(STORAGE_KEYS.USER_STREAK as StorageKey, 'userStreak'),
     [createDebouncedSave]
   );
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (): Promise<{
+    cards: CardsByCategory | null;
+    dailyDeck: Card[] | null;
+    templates: Template[] | null;
+    dayCompletions: DayCompletion[] | null;
+    userStreak: UserStreak | null;
+    hasData?: boolean;
+  }> => {
     if (!initialized) {
-      return { cards: null, dailyDeck: null, templates: null, dayCompletions: null, userStreak: null };
+      return {
+        cards: null,
+        dailyDeck: null,
+        templates: null,
+        dayCompletions: null,
+        userStreak: null,
+      };
     }
 
     try {
-      const [cardsResult, dailyDeckResult, templatesResult, dayCompletionsResult, userStreakResult] = await Promise.all([
+      const [
+        cardsResult,
+        dailyDeckResult,
+        templatesResult,
+        dayCompletionsResult,
+        userStreakResult,
+      ] = await Promise.all([
         firebaseStorage.load(STORAGE_KEYS.CARDS as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.DAILY_DECK as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.TEMPLATES as StorageKey),
@@ -103,31 +145,47 @@ export function useFirebase() {
         console.error('Failed to load templates:', templatesResult.error);
       }
       if (!dayCompletionsResult.success) {
-        console.error('Failed to load day completions:', dayCompletionsResult.error);
+        console.error(
+          'Failed to load day completions:',
+          dayCompletionsResult.error
+        );
       }
       if (!userStreakResult.success) {
         console.error('Failed to load user streak:', userStreakResult.error);
       }
 
       return {
-        cards: cardsResult.data,
-        dailyDeck: dailyDeckResult.data,
-        templates: templatesResult.data,
-        dayCompletions: dayCompletionsResult.data || [],
-        userStreak: userStreakResult.data || { currentStreak: 0, longestStreak: 0, lastCompletionDate: '' },
-        hasData: !!(cardsResult.data || dailyDeckResult.data || templatesResult.data),
+        cards: (cardsResult.data as CardsByCategory) || null,
+        dailyDeck: (dailyDeckResult.data as Card[]) || null,
+        templates: (templatesResult.data as Template[]) || null,
+        dayCompletions: (dayCompletionsResult.data as DayCompletion[]) || null,
+        userStreak: (userStreakResult.data as UserStreak) || null,
+        hasData: !!(
+          cardsResult.data ||
+          dailyDeckResult.data ||
+          templatesResult.data
+        ),
       };
     } catch (error: unknown) {
       console.error('Error loading data from Firebase:', error);
-      return { cards: null, dailyDeck: null, templates: null, dayCompletions: [], userStreak: { currentStreak: 0, longestStreak: 0, lastCompletionDate: '' } };
+      return {
+        cards: null,
+        dailyDeck: null,
+        templates: null,
+        dayCompletions: null,
+        userStreak: null,
+      };
     }
   }, [initialized]);
 
-  const retrySave = useCallback((cards: unknown, dailyDeck: unknown, templates: unknown) => {
-    if (cards) debouncedSaveCards(cards);
-    if (dailyDeck) debouncedSaveDailyDeck(dailyDeck);
-    if (templates) debouncedSaveTemplates(templates);
-  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]);
+  const retrySave = useCallback(
+    (cards: unknown, dailyDeck: unknown, templates: unknown) => {
+      if (cards) debouncedSaveCards(cards);
+      if (dailyDeck) debouncedSaveDailyDeck(dailyDeck);
+      if (templates) debouncedSaveTemplates(templates);
+    },
+    [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates]
+  );
 
   const flushPendingSaves = useCallback(() => {
     if (debouncedSaveCards?.flush) {
@@ -145,7 +203,13 @@ export function useFirebase() {
     if (debouncedSaveUserStreak?.flush) {
       debouncedSaveUserStreak.flush();
     }
-  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates, debouncedSaveDayCompletions, debouncedSaveUserStreak]);
+  }, [
+    debouncedSaveCards,
+    debouncedSaveDailyDeck,
+    debouncedSaveTemplates,
+    debouncedSaveDayCompletions,
+    debouncedSaveUserStreak,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -155,7 +219,13 @@ export function useFirebase() {
       debouncedSaveDayCompletions?.cancel?.();
       debouncedSaveUserStreak?.cancel?.();
     };
-  }, [debouncedSaveCards, debouncedSaveDailyDeck, debouncedSaveTemplates, debouncedSaveDayCompletions, debouncedSaveUserStreak]);
+  }, [
+    debouncedSaveCards,
+    debouncedSaveDailyDeck,
+    debouncedSaveTemplates,
+    debouncedSaveDayCompletions,
+    debouncedSaveUserStreak,
+  ]);
 
   return {
     initialized,

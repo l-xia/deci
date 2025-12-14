@@ -1,0 +1,26 @@
+# Dependencies
+node_modules
+package-lock.json
+
+# Build outputs
+dist
+build
+.vite
+
+# Cache
+.cache
+.parcel-cache
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Firebase
+.firebase
+firebase-debug.log
+
+# Misc
+coverage
+.DS_Store
+*.log
