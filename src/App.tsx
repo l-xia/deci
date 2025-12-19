@@ -1,25 +1,43 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
-import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import { DayCompletionModal } from './components/DayCompletionModal';
 import { TemplatePickerModal } from './components/TemplatePickerModal';
 import AuthForm from './components/AuthForm';
 import { AppHeader } from './components/AppHeader';
-import { AppProvider, useApp } from './context';
+import {
+  AppProvider,
+  useCardsContext,
+  useDailyDeckContext,
+  useTemplatesContext,
+  useDayCompletionContext,
+  useSyncContext,
+} from './context';
 import { useAuth } from './context/AuthContext';
-import { CATEGORIES } from './constants';
-import { isCategoryKey, isCardsByCategory, isCardArray, isTemplateArray } from './utils/typeGuards';
+import {
+  isCategoryKey,
+  isCardsByCategory,
+  isCardArray,
+  isTemplateArray,
+} from './utils/typeGuards';
 import { useCardModal } from './hooks/useCardModal';
+import {
+  reorderDeckOnComplete,
+  reorderDeckOnIncomplete,
+} from './utils/deckOperations';
+import { CardStacksSection } from './components/CardStacks/CardStacksSection';
 import type { Card, CategoryKey } from './types';
 import type { DayCompletionSummary, UserStreak } from './types/dayCompletion';
 
 function AuthenticatedApp() {
   const { currentUser, logout } = useAuth();
-  const app = useApp();
-
-  const { firebase, cards, dailyDeck, templates, dragAndDrop, dayCompletion } = app;
+  const { firebase } = useSyncContext();
+  const cards = useCardsContext();
+  const dailyDeck = useDailyDeckContext();
+  const templates = useTemplatesContext();
+  const dayCompletion = useDayCompletionContext();
+  const { dragAndDrop } = dailyDeck; // dragAndDrop is now part of dailyDeck context
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDayCompletionModal, setShowDayCompletionModal] = useState(false);
@@ -41,57 +59,90 @@ function AuthenticatedApp() {
     closeModal,
   } = useCardModal();
 
-  const handleSaveCard = useCallback((cardData: Partial<Card>) => {
-    if (editingDailyDeckIndex !== null) {
-      // Update daily deck instance
-      const updatedCard = { ...dailyDeck.dailyDeck[editingDailyDeckIndex], ...cardData } as Card;
-      const updatedDeck = [...dailyDeck.dailyDeck];
-      updatedDeck[editingDailyDeckIndex] = updatedCard;
-      dailyDeck.setDailyDeck(updatedDeck);
+  const handleSaveCard = useCallback(
+    (cardData: Partial<Card>) => {
+      if (editingDailyDeckIndex !== null) {
+        // Update daily deck instance
+        const updatedCard = {
+          ...dailyDeck.dailyDeck[editingDailyDeckIndex],
+          ...cardData,
+        } as Card;
+        const updatedDeck = [...dailyDeck.dailyDeck];
+        updatedDeck[editingDailyDeckIndex] = updatedCard;
+        dailyDeck.setDailyDeck(updatedDeck);
 
-      // Only update source card if NOT one-time edit
-      if (!isOneTimeEdit) {
-        const sourceCategory = updatedCard.sourceCategory;
-        if (sourceCategory && isCategoryKey(sourceCategory)) {
-          cards.updateCard(sourceCategory, updatedCard.id, cardData);
+        // Only update source card if NOT one-time edit
+        if (!isOneTimeEdit) {
+          const sourceCategory = updatedCard.sourceCategory;
+          if (sourceCategory && isCategoryKey(sourceCategory)) {
+            cards.updateCard(sourceCategory, updatedCard.id, cardData);
+          }
+        }
+      } else if (selectedCategory) {
+        // Normal stack card editing
+        if (editingCard) {
+          cards.updateCard(selectedCategory, editingCard.id, cardData);
+        } else {
+          cards.addCard(selectedCategory, cardData);
         }
       }
-    } else if (selectedCategory) {
-      // Normal stack card editing
-      if (editingCard) {
-        cards.updateCard(selectedCategory, editingCard.id, cardData);
-      } else {
-        cards.addCard(selectedCategory, cardData);
+      closeModal();
+    },
+    [
+      editingCard,
+      selectedCategory,
+      editingDailyDeckIndex,
+      isOneTimeEdit,
+      cards,
+      dailyDeck,
+      closeModal,
+    ]
+  );
+
+  const handleDeleteCard = useCallback(
+    (category: CategoryKey, cardId: string) => {
+      if (
+        confirm(
+          'Delete this card? This will also remove it from your daily deck if present.'
+        )
+      ) {
+        cards.deleteCard(category, cardId);
+        dailyDeck.removeCardById(cardId);
       }
-    }
-    closeModal();
-  }, [editingCard, selectedCategory, editingDailyDeckIndex, isOneTimeEdit, cards, dailyDeck, closeModal]);
+    },
+    [cards, dailyDeck]
+  );
 
-  const handleDeleteCard = useCallback((category: CategoryKey, cardId: string) => {
-    if (confirm('Delete this card? This will also remove it from your daily deck if present.')) {
-      cards.deleteCard(category, cardId);
-      dailyDeck.removeCardById(cardId);
-    }
-  }, [cards, dailyDeck]);
+  const handleSaveTemplate = useCallback(
+    (name: string) => {
+      templates.saveTemplate(name, dailyDeck.dailyDeck);
+    },
+    [templates, dailyDeck.dailyDeck]
+  );
 
-  const handleSaveTemplate = useCallback((name: string) => {
-    templates.saveTemplate(name, dailyDeck.dailyDeck);
-  }, [templates, dailyDeck.dailyDeck]);
+  const handleLoadTemplate = useCallback(
+    (templateId: string) => {
+      const template = templates.getTemplate(templateId);
+      if (template) {
+        dailyDeck.loadFromTemplate(template.cards, cards.cards);
+      }
+    },
+    [templates, dailyDeck, cards.cards]
+  );
 
-  const handleLoadTemplate = useCallback((templateId: string) => {
-    const template = templates.getTemplate(templateId);
-    if (template) {
-      dailyDeck.loadFromTemplate(template.cards, cards.cards);
-    }
-  }, [templates, dailyDeck, cards.cards]);
-
-  const handleDeleteTemplate = useCallback((templateId: string) => {
-    templates.deleteTemplate(templateId);
-  }, [templates]);
+  const handleDeleteTemplate = useCallback(
+    (templateId: string) => {
+      templates.deleteTemplate(templateId);
+    },
+    [templates]
+  );
 
   const handleCompleteDay = useCallback(() => {
     const result = dayCompletion.completeDay(dailyDeck.dailyDeck);
-    setCompletionData({ summary: result.completion.summary, streak: result.streak });
+    setCompletionData({
+      summary: result.completion.summary,
+      streak: result.streak,
+    });
     setShowDayCompletionModal(true);
 
     // Flush pending saves immediately to ensure day completion is saved
@@ -100,99 +151,125 @@ function AuthenticatedApp() {
 
   const scrollToNextIncompleteCard = useCallback(() => {
     setTimeout(() => {
-      const nextIncompleteElement = document.querySelector('[data-card-incomplete="true"]');
+      const nextIncompleteElement = document.querySelector(
+        '[data-card-incomplete="true"]'
+      );
       if (nextIncompleteElement) {
-        nextIncompleteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        nextIncompleteElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
       }
     }, 300);
   }, []);
 
-  const handleMarkCardComplete = useCallback((index: number, card: Card, updates: Partial<Card>) => {
-    const updatedCard = { ...card, ...updates };
-    const newDeck = [...dailyDeck.dailyDeck];
-    newDeck.splice(index, 1);
+  const handleMarkCardComplete = useCallback(
+    (index: number, card: Card, updates: Partial<Card>) => {
+      const updatedCard = { ...card, ...updates };
+      const { newDeck } = reorderDeckOnComplete(
+        dailyDeck.dailyDeck,
+        index,
+        updatedCard
+      );
+      dailyDeck.setDailyDeck(newDeck);
 
-    // Find the position after the last completed card
-    const lastCompletedIndex = newDeck.findIndex(c => !c.completed);
-    const insertIndex = lastCompletedIndex === -1 ? newDeck.length : lastCompletedIndex;
+      scrollToNextIncompleteCard();
+    },
+    [dailyDeck, scrollToNextIncompleteCard]
+  );
 
-    newDeck.splice(insertIndex, 0, updatedCard);
-    dailyDeck.setDailyDeck(newDeck);
+  const handleRegularCardUpdate = useCallback(
+    (index: number, updatedCard: Card) => {
+      const updatedDeck = dailyDeck.dailyDeck.map((c, i) =>
+        i === index ? updatedCard : c
+      );
+      dailyDeck.setDailyDeck(updatedDeck);
+    },
+    [dailyDeck]
+  );
 
-    scrollToNextIncompleteCard();
-  }, [dailyDeck, scrollToNextIncompleteCard]);
+  const handleMarkCardIncomplete = useCallback(
+    (index: number, card: Card, updates: Partial<Card>) => {
+      // Remove completion-related fields
+      const { ...cardWithoutCompletionFields } = card;
+      const updatedCard = { ...cardWithoutCompletionFields, ...updates };
 
-  const handleRegularCardUpdate = useCallback((index: number, updatedCard: Card) => {
-    const updatedDeck = dailyDeck.dailyDeck.map((c, i) =>
-      i === index ? updatedCard : c
-    );
-    dailyDeck.setDailyDeck(updatedDeck);
-  }, [dailyDeck]);
+      const { newDeck } = reorderDeckOnIncomplete(
+        dailyDeck.dailyDeck,
+        index,
+        updatedCard
+      );
+      dailyDeck.setDailyDeck(newDeck);
+    },
+    [dailyDeck]
+  );
 
-  const handleMarkCardIncomplete = useCallback((index: number, card: Card, updates: Partial<Card>) => {
-    // Remove completion-related fields
-    const { ...cardWithoutCompletionFields } = card;
-    const updatedCard = { ...cardWithoutCompletionFields, ...updates };
+  const handleUpdateCard = useCallback(
+    (index: number, updates: Partial<Card>) => {
+      const card = dailyDeck.dailyDeck[index];
+      if (!card) return;
 
-    const newDeck = [...dailyDeck.dailyDeck];
-    newDeck.splice(index, 1);
+      const updatedCard = { ...card, ...updates };
 
-    // Find the first incomplete card position (insert before first incomplete)
-    const firstIncompleteIndex = newDeck.findIndex(c => !c.completed);
-    const insertIndex = firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex;
-
-    newDeck.splice(insertIndex, 0, updatedCard);
-    dailyDeck.setDailyDeck(newDeck);
-  }, [dailyDeck]);
-
-  const handleUpdateCard = useCallback((index: number, updates: Partial<Card>) => {
-    const card = dailyDeck.dailyDeck[index];
-    if (!card) return;
-
-    const updatedCard = { ...card, ...updates };
-
-    // If marking as complete, reorder the deck
-    if (updates.completed && !card.completed) {
-      handleMarkCardComplete(index, card, updates);
-    } else if (updates.completed === false && card.completed) {
-      // If marking as incomplete, reorder the deck
-      handleMarkCardIncomplete(index, card, updates);
-    } else {
-      handleRegularCardUpdate(index, updatedCard);
-    }
-  }, [dailyDeck, handleMarkCardComplete, handleMarkCardIncomplete, handleRegularCardUpdate]);
-
-  const handleEditDailyDeckCard = useCallback((index: number) => {
-    const card = dailyDeck.dailyDeck[index];
-    if (card) {
-      openDailyDeckCardModal(card, index);
-    }
-  }, [dailyDeck.dailyDeck, openDailyDeckCardModal]);
-
-  const handleOneTimeEditDailyDeckCard = useCallback((index: number) => {
-    const card = dailyDeck.dailyDeck[index];
-    if (card) {
-      openOneTimeEditModal(card, index);
-    }
-  }, [dailyDeck.dailyDeck, openOneTimeEditModal]);
-
-  const handleReturnToStack = useCallback((index: number) => {
-    const card = dailyDeck.dailyDeck[index];
-    if (card) {
-      // Clear daily note and timer state when returning card to stack
-      if (card.sourceCategory && isCategoryKey(card.sourceCategory)) {
-        const updates: Partial<Card> = {};
-        if (card.dailyNote) updates.dailyNote = '';
-        if (card.timerState) updates.timerState = { accumulatedSeconds: 0, isPaused: true };
-
-        if (Object.keys(updates).length > 0) {
-          cards.updateCard(card.sourceCategory, card.id, updates);
-        }
+      // If marking as complete, reorder the deck
+      if (updates.completed && !card.completed) {
+        handleMarkCardComplete(index, card, updates);
+      } else if (updates.completed === false && card.completed) {
+        // If marking as incomplete, reorder the deck
+        handleMarkCardIncomplete(index, card, updates);
+      } else {
+        handleRegularCardUpdate(index, updatedCard);
       }
+    },
+    [
+      dailyDeck,
+      handleMarkCardComplete,
+      handleMarkCardIncomplete,
+      handleRegularCardUpdate,
+    ]
+  );
 
-      dailyDeck.removeCardById(card.id);
-    }
-  }, [dailyDeck, cards]);
+  const handleEditDailyDeckCard = useCallback(
+    (index: number) => {
+      const card = dailyDeck.dailyDeck[index];
+      if (card) {
+        openDailyDeckCardModal(card, index);
+      }
+    },
+    [dailyDeck.dailyDeck, openDailyDeckCardModal]
+  );
+
+  const handleOneTimeEditDailyDeckCard = useCallback(
+    (index: number) => {
+      const card = dailyDeck.dailyDeck[index];
+      if (card) {
+        openOneTimeEditModal(card, index);
+      }
+    },
+    [dailyDeck.dailyDeck, openOneTimeEditModal]
+  );
+
+  const handleReturnToStack = useCallback(
+    (index: number) => {
+      const card = dailyDeck.dailyDeck[index];
+      if (card) {
+        // Clear daily note and timer state when returning card to stack
+        if (card.sourceCategory && isCategoryKey(card.sourceCategory)) {
+          const updates: Partial<Card> = {};
+          if (card.dailyNote) updates.dailyNote = '';
+          if (card.timerState)
+            updates.timerState = { accumulatedSeconds: 0, isPaused: true };
+
+          if (Object.keys(updates).length > 0) {
+            cards.updateCard(card.sourceCategory, card.id, updates);
+          }
+        }
+
+        dailyDeck.removeCardById(card.id);
+      }
+    },
+    [dailyDeck, cards]
+  );
 
   const handleRefresh = useCallback(async () => {
     if (!firebase.initialized || isRefreshing) return;
@@ -211,13 +288,17 @@ function AuthenticatedApp() {
       if (result.dailyDeck && isCardArray(result.dailyDeck)) {
         dailyDeck.setDailyDeck(result.dailyDeck);
       } else if (result.dailyDeck) {
-        console.error('Invalid daily deck data structure received from Firebase');
+        console.error(
+          'Invalid daily deck data structure received from Firebase'
+        );
       }
 
       if (result.templates && isTemplateArray(result.templates)) {
         templates.setTemplates(result.templates);
       } else if (result.templates) {
-        console.error('Invalid templates data structure received from Firebase');
+        console.error(
+          'Invalid templates data structure received from Firebase'
+        );
       }
     } catch (error) {
       console.error('Failed to refresh data:', error);
@@ -225,16 +306,6 @@ function AuthenticatedApp() {
       setIsRefreshing(false);
     }
   }, [firebase, cards, dailyDeck, templates, isRefreshing]);
-
-  // Memoize filtered cards to avoid recalculating on every render
-  const filteredCardsByCategory = useMemo(() => {
-    return Object.fromEntries(
-      (Object.keys(CATEGORIES) as CategoryKey[]).map(key => [
-        key,
-        cards.getAvailableCards(key, dailyDeck.dailyDeck)
-      ])
-    ) as Record<CategoryKey, Card[]>;
-  }, [cards, dailyDeck.dailyDeck]);
 
   if (!firebase.initialized) {
     return (
@@ -258,29 +329,25 @@ function AuthenticatedApp() {
             isRefreshing={isRefreshing}
             onRefresh={handleRefresh}
             onLogout={logout}
-            onRetrySave={() => firebase.retrySave(cards.cards, dailyDeck.dailyDeck, templates.templates)}
+            onRetrySave={() =>
+              firebase.retrySave(
+                cards.cards,
+                dailyDeck.dailyDeck,
+                templates.templates
+              )
+            }
           />
 
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
             <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
-              <div className="md:grid md:grid-cols-2 md:auto-rows-min md:gap-4 flex md:flex-none overflow-x-auto md:overflow-x-visible gap-4 md:gap-0 pb-4 md:pb-0 snap-x snap-mandatory md:snap-none">
-                {(Object.entries(CATEGORIES) as Array<[keyof typeof CATEGORIES, typeof CATEGORIES[keyof typeof CATEGORIES]]>).map(([key, category]) => {
-                  return (
-                    <div key={key} className="flex-shrink-0 w-[85vw] md:w-auto snap-start">
-                      <CardStack
-                        droppableId={key}
-                        title={category.name}
-                        cards={filteredCardsByCategory[key]}
-                        color={category.color}
-                        onAddCard={() => openModal(key)}
-                        onEditCard={(card) => openModal(key, card)}
-                        onDeleteCard={(cardId) => handleDeleteCard(key, cardId)}
-                        dailyDeck={dailyDeck.dailyDeck}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              <CardStacksSection
+                cards={cards.cards}
+                dailyDeck={dailyDeck.dailyDeck}
+                getAvailableCards={cards.getAvailableCards}
+                onAddCard={openModal}
+                onEditCard={(category, card) => openModal(category, card)}
+                onDeleteCard={handleDeleteCard}
+              />
             </div>
 
             <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">

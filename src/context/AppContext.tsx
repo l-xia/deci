@@ -1,82 +1,41 @@
-import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { useFirebase, useCards, useDailyDeck, useTemplates, useDragAndDrop } from '../hooks';
-import { useDayCompletion } from '../hooks/useDayCompletion';
-import { useDataSync } from '../hooks/useDataSync';
-import { CATEGORY_KEYS } from '../constants';
-
-type FirebaseHook = ReturnType<typeof useFirebase>;
-type CardsHook = ReturnType<typeof useCards>;
-type DailyDeckHook = ReturnType<typeof useDailyDeck>;
-type TemplatesHook = ReturnType<typeof useTemplates>;
-type DragAndDropHook = ReturnType<typeof useDragAndDrop>;
-type DayCompletionHook = ReturnType<typeof useDayCompletion>;
-
-interface AppContextValue {
-  firebase: FirebaseHook;
-  cards: CardsHook;
-  dailyDeck: DailyDeckHook;
-  templates: TemplatesHook;
-  dragAndDrop: DragAndDropHook;
-  dayCompletion: DayCompletionHook;
-}
-
-const AppContext = createContext<AppContextValue | null>(null);
-
-const INITIAL_CARDS_STATE = {
-  [CATEGORY_KEYS.STRUCTURE]: [],
-  [CATEGORY_KEYS.UPKEEP]: [],
-  [CATEGORY_KEYS.PLAY]: [],
-  [CATEGORY_KEYS.DEFAULT]: [],
-};
+import { CardsProvider } from './CardsContext';
+import { DailyDeckProvider } from './DailyDeckContext';
+import { TemplatesProvider } from './TemplatesContext';
+import { DayCompletionProvider } from './DayCompletionContext';
+import { SyncProvider } from './SyncContext';
 
 interface AppProviderProps {
   children: ReactNode;
 }
 
+/**
+ * Composed provider that sets up all application contexts in the correct order.
+ *
+ * Provider hierarchy (bottom-up dependency order):
+ * 1. CardsProvider - No dependencies
+ * 2. DailyDeckProvider - Depends on CardsProvider
+ * 3. TemplatesProvider - No dependencies
+ * 4. DayCompletionProvider - No dependencies
+ * 5. SyncProvider - Depends on all above providers for Firebase sync
+ */
 export function AppProvider({ children }: AppProviderProps) {
-  const firebase = useFirebase();
-  const cards = useCards(INITIAL_CARDS_STATE);
-  const dailyDeck = useDailyDeck([]);
-  const templates = useTemplates([]);
-  const dayCompletion = useDayCompletion();
-  const dragAndDrop = useDragAndDrop(
-    cards.cards,
-    cards.setCards,
-    dailyDeck.dailyDeck,
-    dailyDeck.setDailyDeck
+  return (
+    <CardsProvider>
+      <DailyDeckProvider>
+        <TemplatesProvider>
+          <DayCompletionProvider>
+            <SyncProvider>{children}</SyncProvider>
+          </DayCompletionProvider>
+        </TemplatesProvider>
+      </DailyDeckProvider>
+    </CardsProvider>
   );
-
-  useDataSync({
-    firebase,
-    cards: cards.cards,
-    dailyDeck: dailyDeck.dailyDeck,
-    templates: templates.templates,
-    dayCompletions: dayCompletion.dayCompletions,
-    userStreak: dayCompletion.userStreak,
-    setCards: cards.setCards,
-    setDailyDeck: dailyDeck.setDailyDeck,
-    setTemplates: templates.setTemplates,
-    setDayCompletions: dayCompletion.setDayCompletions,
-    setUserStreak: dayCompletion.setUserStreak,
-  });
-
-  const value: AppContextValue = {
-    firebase,
-    cards,
-    dailyDeck,
-    templates,
-    dragAndDrop,
-    dayCompletion,
-  };
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-export function useApp() {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
-}
+// Re-export all context hooks for convenience
+export { useCardsContext } from './CardsContext';
+export { useDailyDeckContext } from './DailyDeckContext';
+export { useTemplatesContext } from './TemplatesContext';
+export { useDayCompletionContext } from './DayCompletionContext';
+export { useSyncContext } from './SyncContext';

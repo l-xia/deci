@@ -1,6 +1,10 @@
 export interface ErrorContext {
   component?: string;
   action?: string;
+  context?: string;
+  source?: string;
+  lineno?: number;
+  colno?: number;
   metadata?: Record<string, unknown>;
 }
 
@@ -16,6 +20,36 @@ export class AppError extends Error {
 }
 
 /**
+ * Sanitize error for logging by removing potentially sensitive information
+ */
+function sanitizeError(error: unknown): object {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      // Only include stack in development
+      ...(import.meta.env.DEV && { stack: error.stack }),
+    };
+  }
+
+  if (error && typeof error === 'object') {
+    // Return a sanitized object with only safe properties
+    const sanitized: Record<string, unknown> = {};
+    const safeKeys = ['code', 'message', 'name', 'type'];
+
+    for (const key of safeKeys) {
+      if (key in error) {
+        sanitized[key] = (error as Record<string, unknown>)[key];
+      }
+    }
+
+    return sanitized;
+  }
+
+  return { value: String(error) };
+}
+
+/**
  * Centralized error handler that logs errors
  */
 export function handleError(
@@ -25,12 +59,12 @@ export function handleError(
   const errorMessage = getErrorMessage(error);
   const errorCode = getErrorCode(error);
 
-  // Log to console for debugging
+  // Log to console for debugging with sanitized error
   console.error('Error:', {
     message: errorMessage,
     code: errorCode,
     context,
-    error,
+    error: sanitizeError(error),
   });
 
   return errorMessage;
@@ -94,13 +128,15 @@ export function formatFirebaseAuthError(error: unknown): string {
     'auth/wrong-password': 'Incorrect password.',
     'auth/email-already-in-use': 'An account already exists with this email.',
     'auth/weak-password': 'Password should be at least 6 characters.',
-    'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
-    'auth/operation-not-allowed': 'Email/password accounts are not enabled. Please contact support.',
+    'auth/too-many-requests':
+      'Too many failed attempts. Please try again later.',
+    'auth/operation-not-allowed':
+      'Email/password accounts are not enabled. Please contact support.',
     'auth/internal-error': 'An internal error occurred. Please try again.',
     'auth/invalid-credential': 'Invalid email or password.',
   };
 
-  return code ? (errorMessages[code] || originalMessage) : originalMessage;
+  return code ? errorMessages[code] || originalMessage : originalMessage;
 }
 
 /**

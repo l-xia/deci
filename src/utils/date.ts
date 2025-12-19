@@ -84,14 +84,16 @@ export function formatRelativeTime(isoString: string): string {
 export function formatCompletedTime(isoString: string): string {
   return new Date(isoString).toLocaleTimeString([], {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   });
 }
 
 /**
  * Get date range for filtering (7d, 30d, all)
  */
-export function getDateRange(range: '7d' | '30d' | 'all'): { start: Date; end: Date } | null {
+export function getDateRange(
+  range: '7d' | '30d' | 'all'
+): { start: Date; end: Date } | null {
   const now = new Date();
 
   switch (range) {
@@ -133,8 +135,11 @@ export function calculateStreak(dates: string[]): {
 
     // Calculate current streak
     for (let i = 1; i < sortedDates.length; i++) {
-      const prevDate = parseISO(sortedDates[i - 1]);
-      const currDate = parseISO(sortedDates[i]);
+      const prevDateStr = sortedDates[i - 1];
+      const currDateStr = sortedDates[i];
+      if (!prevDateStr || !currDateStr) continue;
+      const prevDate = parseISO(prevDateStr);
+      const currDate = parseISO(currDateStr);
       const daysDiff = differenceInCalendarDays(prevDate, currDate);
 
       if (daysDiff === 1) {
@@ -147,8 +152,11 @@ export function calculateStreak(dates: string[]): {
 
   // Calculate longest streak
   for (let i = 1; i < sortedDates.length; i++) {
-    const prevDate = parseISO(sortedDates[i - 1]);
-    const currDate = parseISO(sortedDates[i]);
+    const prevDateStr = sortedDates[i - 1];
+    const currDateStr = sortedDates[i];
+    if (!prevDateStr || !currDateStr) continue;
+    const prevDate = parseISO(prevDateStr);
+    const currDate = parseISO(currDateStr);
     const daysDiff = differenceInCalendarDays(prevDate, currDate);
 
     if (daysDiff === 1) {

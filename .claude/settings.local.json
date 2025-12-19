@@ -6,7 +6,9 @@
       "mcp__ide__getDiagnostics",
       "Bash(cat:*)",
       "Bash(find:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

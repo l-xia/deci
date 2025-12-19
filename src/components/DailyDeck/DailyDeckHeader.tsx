@@ -11,7 +11,7 @@ interface DailyDeckHeaderProps {
   onLoadTemplate: (templateId: string) => void;
   onDeleteTemplate: (templateId: string) => void;
   hasDailyDeck: boolean;
-  onCompleteDay?: () => void;
+  onCompleteDay?: (() => void) | undefined;
 }
 
 function DailyDeckHeader({
@@ -43,34 +43,31 @@ function DailyDeckHeader({
         )}
 
         <div className="relative">
-        <button
-          onClick={onMenuToggle}
-          className="p-1 text-gray-600 hover:text-gray-900 transition-colors"
-          title="Menu"
-        >
-          <EllipsisVerticalIcon className="w-6 h-6" />
-        </button>
+          <button
+            onClick={onMenuToggle}
+            className="p-1 text-gray-600 hover:text-gray-900 transition-colors"
+            title="Menu"
+          >
+            <EllipsisVerticalIcon className="w-6 h-6" />
+          </button>
 
-        {menuOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={onMenuClose}
-            />
-            <div className="absolute right-0 mt-2 w-80 bg-white border-2 border-gray-200 rounded-md shadow-lg z-20 max-h-96 overflow-y-auto">
-              <TemplateManager
-                templates={templates}
-                onSave={onSaveTemplate}
-                onLoad={(templateId: string) => {
-                  onLoadTemplate(templateId);
-                  onMenuClose();
-                }}
-                onDelete={onDeleteTemplate}
-                hasDailyDeck={hasDailyDeck}
-              />
-            </div>
-          </>
-        )}
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={onMenuClose} />
+              <div className="absolute right-0 mt-2 w-80 bg-white border-2 border-gray-200 rounded-md shadow-lg z-20 max-h-96 overflow-y-auto">
+                <TemplateManager
+                  templates={templates}
+                  onSave={onSaveTemplate}
+                  onLoad={(templateId: string) => {
+                    onLoadTemplate(templateId);
+                    onMenuClose();
+                  }}
+                  onDelete={onDeleteTemplate}
+                  hasDailyDeck={hasDailyDeck}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

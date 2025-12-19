@@ -2,4 +2,11 @@
  * Central export for all context providers
  */
 
-export { AppProvider, useApp } from './AppContext';
+export {
+  AppProvider,
+  useCardsContext,
+  useDailyDeckContext,
+  useTemplatesContext,
+  useDayCompletionContext,
+  useSyncContext,
+} from './AppContext';

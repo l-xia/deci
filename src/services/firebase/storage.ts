@@ -1,7 +1,11 @@
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from './config';
 import { validateLoadedData } from '../../utils/validators';
-import { FirebaseStorageError, type StorageKey, type StorageResult } from './types';
+import {
+  FirebaseStorageError,
+  type StorageKey,
+  type StorageResult,
+} from './types';
 import { retryWithBackoff, createDataToSave } from './utils';
 
 class FirebaseStorageManager {
@@ -56,7 +60,7 @@ class FirebaseStorageManager {
 
       console.log(`💾 Saving ${key} to Firebase...`, {
         path: `users/${userId}/data/${key}`,
-        dataSize: JSON.stringify(data).length
+        dataSize: JSON.stringify(data).length,
       });
 
       await retryWithBackoff(
@@ -102,7 +106,16 @@ class FirebaseStorageManager {
 
       if (docSnap.exists()) {
         const storedData = docSnap.data();
-        const loadedData = storedData.data || null;
+        if (!storedData) {
+          const error = new FirebaseStorageError(
+            `Document exists but data is null for ${key}`,
+            'INVALID_DOCUMENT'
+          );
+          console.error(error.message);
+          return { success: false, data: null, error };
+        }
+
+        const loadedData = storedData.data ?? null;
 
         const validation = validateLoadedData(loadedData, key);
         if (!validation.valid) {
@@ -141,7 +154,7 @@ class FirebaseStorageManager {
       const unsubscribe = onSnapshot(
         docRef,
         (docSnap) => {
-          const data = docSnap.exists() ? docSnap.data().data : null;
+          const data = docSnap.exists() ? (docSnap.data()?.data ?? null) : null;
           callback(data);
         },
         (error) => {
@@ -165,7 +178,7 @@ class FirebaseStorageManager {
   }
 
   unsubscribeAll(): void {
-    Object.keys(this.unsubscribers).forEach(key => {
+    Object.keys(this.unsubscribers).forEach((key) => {
       this.unsubscribe(key as StorageKey);
     });
   }

@@ -33,7 +33,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   handleReset = () => {
     // Clear potentially corrupted data
     if (window.confirm('This will clear your local data. Are you sure?')) {
-      localStorage.clear();
+      // Only clear app-specific keys to avoid affecting other apps
+      const appKeys = [
+        'cards',
+        'dailyDeck',
+        'templates',
+        'dayCompletions',
+        'userStreak',
+      ];
+      appKeys.forEach((key) => localStorage.removeItem(key));
       window.location.reload();
     }
   };
@@ -44,14 +52,27 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full">
             <div className="flex items-center gap-3 mb-4">
-              <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="w-12 h-12 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
-              <h1 className="text-2xl font-bold text-gray-900">Something went wrong</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Something went wrong
+              </h1>
             </div>
 
             <p className="text-gray-600 mb-6">
-              The app encountered an unexpected error. This might be due to corrupted data or a technical issue.
+              The app encountered an unexpected error. This might be due to
+              corrupted data or a technical issue.
             </p>
 
             {import.meta.env.DEV && this.state.error && (
