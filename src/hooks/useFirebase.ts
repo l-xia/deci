@@ -155,11 +155,11 @@ export function useFirebase() {
       }
 
       return {
-        cards: (cardsResult.data as CardsByCategory) || null,
-        dailyDeck: (dailyDeckResult.data as Card[]) || null,
-        templates: (templatesResult.data as Template[]) || null,
-        dayCompletions: (dayCompletionsResult.data as DayCompletion[]) || null,
-        userStreak: (userStreakResult.data as UserStreak) || null,
+        cards: cardsResult.data as CardsByCategory | null,
+        dailyDeck: dailyDeckResult.data as Card[] | null,
+        templates: templatesResult.data as Template[] | null,
+        dayCompletions: dayCompletionsResult.data as DayCompletion[] | null,
+        userStreak: userStreakResult.data as UserStreak | null,
         hasData: !!(
           cardsResult.data ||
           dailyDeckResult.data ||

@@ -11,8 +11,28 @@ export function isCardAvailableOnDate(
   try {
     const rule = rrulestr(scheduleConfig.rrule);
 
-    // Use UTC to avoid timezone issues between RRule (UTC) and date-fns (local timezone)
-    // Get the calendar date in local timezone
+    /**
+     * UTC/Local Timezone Conversion Strategy:
+     *
+     * RRule internally works in UTC, but we want to check if a card is available
+     * on a specific calendar date in the user's local timezone.
+     *
+     * Process:
+     * 1. Extract the calendar date components (year, month, day) from the input date
+     *    using local timezone methods (.getFullYear(), .getMonth(), .getDate())
+     * 2. Create UTC dates representing the start and end of that calendar day
+     *    using Date.UTC() to avoid timezone offset complications
+     * 3. Query RRule for any occurrences between those UTC timestamps
+     *
+     * Example: If it's Jan 15, 2024 at 11pm PST:
+     * - Calendar date is Jan 15, 2024
+     * - dayStart is Jan 15, 2024 00:00:00 UTC
+     * - dayEnd is Jan 15, 2024 23:59:59 UTC
+     * - We check if the schedule has any occurrence in that UTC range
+     *
+     * This ensures consistent behavior across timezones while respecting
+     * the user's local calendar date.
+     */
     const year = date.getFullYear();
     const month = date.getMonth();
     const day = date.getDate();

@@ -1,6 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
-import CardStack from './components/CardStack';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import { DayCompletionModal } from './components/DayCompletionModal';
@@ -16,7 +15,6 @@ import {
   useSyncContext,
 } from './context';
 import { useAuth } from './context/AuthContext';
-import { CATEGORIES } from './constants';
 import {
   isCategoryKey,
   isCardsByCategory,
@@ -24,6 +22,11 @@ import {
   isTemplateArray,
 } from './utils/typeGuards';
 import { useCardModal } from './hooks/useCardModal';
+import {
+  reorderDeckOnComplete,
+  reorderDeckOnIncomplete,
+} from './utils/deckOperations';
+import { CardStacksSection } from './components/CardStacks/CardStacksSection';
 import type { Card, CategoryKey } from './types';
 import type { DayCompletionSummary, UserStreak } from './types/dayCompletion';
 
@@ -163,15 +166,11 @@ function AuthenticatedApp() {
   const handleMarkCardComplete = useCallback(
     (index: number, card: Card, updates: Partial<Card>) => {
       const updatedCard = { ...card, ...updates };
-      const newDeck = [...dailyDeck.dailyDeck];
-      newDeck.splice(index, 1);
-
-      // Find the position after the last completed card
-      const lastCompletedIndex = newDeck.findIndex((c) => !c.completed);
-      const insertIndex =
-        lastCompletedIndex === -1 ? newDeck.length : lastCompletedIndex;
-
-      newDeck.splice(insertIndex, 0, updatedCard);
+      const { newDeck } = reorderDeckOnComplete(
+        dailyDeck.dailyDeck,
+        index,
+        updatedCard
+      );
       dailyDeck.setDailyDeck(newDeck);
 
       scrollToNextIncompleteCard();
@@ -195,15 +194,11 @@ function AuthenticatedApp() {
       const { ...cardWithoutCompletionFields } = card;
       const updatedCard = { ...cardWithoutCompletionFields, ...updates };
 
-      const newDeck = [...dailyDeck.dailyDeck];
-      newDeck.splice(index, 1);
-
-      // Find the first incomplete card position (insert before first incomplete)
-      const firstIncompleteIndex = newDeck.findIndex((c) => !c.completed);
-      const insertIndex =
-        firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex;
-
-      newDeck.splice(insertIndex, 0, updatedCard);
+      const { newDeck } = reorderDeckOnIncomplete(
+        dailyDeck.dailyDeck,
+        index,
+        updatedCard
+      );
       dailyDeck.setDailyDeck(newDeck);
     },
     [dailyDeck]
@@ -312,16 +307,6 @@ function AuthenticatedApp() {
     }
   }, [firebase, cards, dailyDeck, templates, isRefreshing]);
 
-  // Memoize filtered cards to avoid recalculating on every render
-  const filteredCardsByCategory = useMemo(() => {
-    return Object.fromEntries(
-      (Object.keys(CATEGORIES) as CategoryKey[]).map((key) => [
-        key,
-        cards.getAvailableCards(key, dailyDeck.dailyDeck),
-      ])
-    ) as Record<CategoryKey, Card[]>;
-  }, [cards, dailyDeck.dailyDeck]);
-
   if (!firebase.initialized) {
     return (
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -355,34 +340,14 @@ function AuthenticatedApp() {
 
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
             <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
-              <div className="md:grid md:grid-cols-2 md:auto-rows-min md:gap-4 flex md:flex-none overflow-x-auto md:overflow-x-visible gap-4 md:gap-0 pb-4 md:pb-0 snap-x snap-mandatory md:snap-none">
-                {(
-                  Object.entries(CATEGORIES) as Array<
-                    [
-                      keyof typeof CATEGORIES,
-                      (typeof CATEGORIES)[keyof typeof CATEGORIES],
-                    ]
-                  >
-                ).map(([key, category]) => {
-                  return (
-                    <div
-                      key={key}
-                      className="flex-shrink-0 w-[85vw] md:w-auto snap-start"
-                    >
-                      <CardStack
-                        droppableId={key}
-                        title={category.name}
-                        cards={filteredCardsByCategory[key] ?? []}
-                        color={category.color}
-                        onAddCard={() => openModal(key)}
-                        onEditCard={(card) => openModal(key, card)}
-                        onDeleteCard={(cardId) => handleDeleteCard(key, cardId)}
-                        dailyDeck={dailyDeck.dailyDeck}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              <CardStacksSection
+                cards={cards.cards}
+                dailyDeck={dailyDeck.dailyDeck}
+                getAvailableCards={cards.getAvailableCards}
+                onAddCard={openModal}
+                onEditCard={(category, card) => openModal(category, card)}
+                onDeleteCard={handleDeleteCard}
+              />
             </div>
 
             <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">

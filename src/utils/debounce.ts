@@ -1,10 +1,10 @@
-type DebouncedFunction<T extends (...args: never[]) => unknown> = {
+type DebouncedFunction<T extends (...args: unknown[]) => unknown> = {
   (...args: Parameters<T>): void;
   cancel: () => void;
   flush: () => void;
 };
 
-export function debounce<T extends (...args: never[]) => unknown>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): DebouncedFunction<T> {
@@ -12,7 +12,9 @@ export function debounce<T extends (...args: never[]) => unknown>(
   let isCancelled = false;
   let lastArgs: Parameters<T> | null = null;
 
-  const debouncedFunction = function executedFunction(...args: Parameters<T>): void {
+  const debouncedFunction = function executedFunction(
+    ...args: Parameters<T>
+  ): void {
     if (isCancelled) {
       console.log('⚠️ Debounce called but is cancelled, resetting...');
       isCancelled = false;
@@ -38,7 +40,7 @@ export function debounce<T extends (...args: never[]) => unknown>(
     timeout = setTimeout(later, wait);
   };
 
-  debouncedFunction.cancel = function(): void {
+  debouncedFunction.cancel = function (): void {
     console.log('🚫 Debounce CANCELLED', new Error().stack);
     if (timeout !== null) {
       clearTimeout(timeout);
@@ -48,7 +50,7 @@ export function debounce<T extends (...args: never[]) => unknown>(
     isCancelled = true;
   };
 
-  debouncedFunction.flush = function(): void {
+  debouncedFunction.flush = function (): void {
     if (timeout !== null) {
       clearTimeout(timeout);
       timeout = null;

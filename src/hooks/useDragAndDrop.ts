@@ -66,7 +66,26 @@ export function useDragAndDrop(
       const newDailyDeck = Array.from(dailyDeck);
       const cardWithSource = { ...card, sourceCategory };
 
-      // Find the position after the last completed card
+      /**
+       * Card Ordering Algorithm:
+       *
+       * The daily deck maintains a specific order: completed cards first, then incomplete cards.
+       * When adding a new card from the category stacks, we want to:
+       * 1. Preserve all completed cards at the top of the deck (they stay in place)
+       * 2. Insert the new card among the incomplete cards
+       *
+       * Process:
+       * 1. Find the first incomplete card's index (this is where incomplete cards begin)
+       * 2. The user's drop position (destination.index) is respected if it's in the incomplete section
+       * 3. If the user tries to drop before incomplete cards start, we clamp it to firstIncompleteIndex
+       *
+       * Example with deck [Completed1, Completed2, Incomplete1, Incomplete2]:
+       * - firstIncompleteIndex = 2
+       * - If user drops at index 0 or 1, we insert at index 2 (after completed cards)
+       * - If user drops at index 3, we insert at index 3 (between incomplete cards)
+       *
+       * This ensures completed cards always stay at the top for easy visual separation.
+       */
       const lastCompletedIndex = newDailyDeck.findIndex((c) => !c.completed);
       const firstIncompleteIndex =
         lastCompletedIndex === -1 ? newDailyDeck.length : lastCompletedIndex;

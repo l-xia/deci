@@ -14,8 +14,6 @@ Object.defineProperty(window, 'matchMedia', {
     matches: false,
     media: query,
     onchange: null,
-    addListener: () => {}, // deprecated
-    removeListener: () => {}, // deprecated
     addEventListener: () => {},
     removeEventListener: () => {},
     dispatchEvent: () => {},

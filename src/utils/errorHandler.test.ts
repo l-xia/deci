@@ -93,7 +93,10 @@ describe('errorHandler', () => {
         'Error:',
         expect.objectContaining({
           message: 'Test error',
-          error,
+          error: expect.objectContaining({
+            name: 'Error',
+            message: 'Test error',
+          }),
         })
       );
     });

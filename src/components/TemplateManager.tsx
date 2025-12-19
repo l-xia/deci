@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Template } from '../types';
 import { VALIDATION_RULES } from '../utils/validators';
+import { FormFieldCounter } from './FormFieldCounter';
 import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 interface TemplateManagerProps {
@@ -15,14 +16,24 @@ interface TemplateManagerProps {
 }
 
 const templateSchema = z.object({
-  name: z.string()
+  name: z
+    .string()
     .min(VALIDATION_RULES.TEMPLATE_NAME_MIN_LENGTH, 'Template name is required')
-    .max(VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH, `Template name must be at most ${VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH} characters`),
+    .max(
+      VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH,
+      `Template name must be at most ${VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH} characters`
+    ),
 });
 
 type TemplateFormData = z.infer<typeof templateSchema>;
 
-function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }: TemplateManagerProps) {
+function TemplateManager({
+  templates,
+  onSave,
+  onLoad,
+  onDelete,
+  hasDailyDeck,
+}: TemplateManagerProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const {
@@ -77,7 +88,8 @@ function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }: 
                   {template.name}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {template.cards.length} cards • {new Date(template.createdAt).toLocaleDateString()}
+                  {template.cards.length} cards •{' '}
+                  {new Date(template.createdAt).toLocaleDateString()}
                 </div>
               </button>
               <button
@@ -113,7 +125,10 @@ function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }: 
         )
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="p-2">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             Template Name
           </label>
           <div className="flex flex-col gap-2">
@@ -139,18 +154,11 @@ function TemplateManager({ templates, onSave, onLoad, onDelete, hasDailyDeck }: 
               }`}
               autoFocus
             />
-            <div className="flex justify-between items-center">
-              {errors.name ? (
-                <p className="text-xs text-red-500">
-                  {errors.name.message}
-                </p>
-              ) : (
-                <div></div>
-              )}
-              <span className="text-xs text-gray-400">
-                {templateName?.length || 0}/{VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH}
-              </span>
-            </div>
+            <FormFieldCounter
+              error={errors.name?.message}
+              currentLength={templateName?.length || 0}
+              maxLength={VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH}
+            />
             <div className="flex gap-2">
               <button
                 type="submit"

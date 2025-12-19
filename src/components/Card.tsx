@@ -13,16 +13,27 @@ interface CardProps {
   dailyDeck?: CardType[];
 }
 
-function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey, dailyDeck = [] }: CardProps) {
+function Card({
+  card,
+  index,
+  onEdit,
+  onDelete,
+  isDailyDeck = false,
+  categoryKey,
+  dailyDeck = [],
+}: CardProps) {
   const colors = getCategoryColors(categoryKey);
 
   // Calculate how many times this card is in the daily deck
-  const timesInDailyDeck = dailyDeck.filter((deckCard) => deckCard.id === card.id).length;
+  const timesInDailyDeck = dailyDeck.filter(
+    (deckCard) => deckCard.id === card.id
+  ).length;
 
   // Calculate remaining uses for limited recurrence cards
-  const remainingUses = card.recurrenceType === 'limited' && card.maxUses
-    ? card.maxUses - timesInDailyDeck
-    : 0;
+  const remainingUses =
+    card.recurrenceType === 'limited' && card.maxUses
+      ? card.maxUses - timesInDailyDeck
+      : 0;
 
   return (
     <Draggable draggableId={card.id} index={index}>
@@ -39,10 +50,14 @@ function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey,
             <div className="flex-1">
               <h3 className="font-medium text-gray-800 relative inline-block">
                 {card.title}
-                <span className={`absolute bottom-0 left-0 right-0 h-2 ${colors.highlight} opacity-50 -z-10`}></span>
+                <span
+                  className={`absolute bottom-0 left-0 right-0 h-2 ${colors.highlight} opacity-50 -z-10`}
+                ></span>
               </h3>
               {card.description && (
-                <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{card.description}</p>
+                <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">
+                  {card.description}
+                </p>
               )}
               <div className="flex gap-2 mt-2 flex-wrap">
                 {card.duration && (
@@ -55,11 +70,12 @@ function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey,
                     {remainingUses}/{card.maxUses} left
                   </span>
                 )}
-                {card.recurrenceType === 'once' && (card.timesUsed || 0) === 0 && (
-                  <span className="inline-block px-2 py-1 bg-red-50 text-red-700 text-xs rounded-md">
-                    One-time
-                  </span>
-                )}
+                {card.recurrenceType === 'once' &&
+                  (card.timesUsed || 0) === 0 && (
+                    <span className="inline-block px-2 py-1 bg-red-50 text-red-700 text-xs rounded-md">
+                      One-time
+                    </span>
+                  )}
                 {card.recurrenceType === 'always' && (
                   <span className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs rounded-md">
                     ∞ {timesInDailyDeck > 0 && `(${timesInDailyDeck} in deck)`}
@@ -76,6 +92,7 @@ function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey,
                   }}
                   className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
                   title="Edit"
+                  aria-label={`Edit ${card.title}`}
                 >
                   <PencilIcon className="w-4 h-4" />
                 </button>
@@ -86,6 +103,7 @@ function Card({ card, index, onEdit, onDelete, isDailyDeck = false, categoryKey,
                   }}
                   className="p-1 text-gray-400 hover:text-red-600 transition-colors"
                   title="Delete"
+                  aria-label={`Delete ${card.title}`}
                 >
                   <TrashIcon className="w-4 h-4" />
                 </button>

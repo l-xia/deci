@@ -20,6 +20,36 @@ export class AppError extends Error {
 }
 
 /**
+ * Sanitize error for logging by removing potentially sensitive information
+ */
+function sanitizeError(error: unknown): object {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      // Only include stack in development
+      ...(import.meta.env.DEV && { stack: error.stack }),
+    };
+  }
+
+  if (error && typeof error === 'object') {
+    // Return a sanitized object with only safe properties
+    const sanitized: Record<string, unknown> = {};
+    const safeKeys = ['code', 'message', 'name', 'type'];
+
+    for (const key of safeKeys) {
+      if (key in error) {
+        sanitized[key] = (error as Record<string, unknown>)[key];
+      }
+    }
+
+    return sanitized;
+  }
+
+  return { value: String(error) };
+}
+
+/**
  * Centralized error handler that logs errors
  */
 export function handleError(
@@ -29,12 +59,12 @@ export function handleError(
   const errorMessage = getErrorMessage(error);
   const errorCode = getErrorCode(error);
 
-  // Log to console for debugging
+  // Log to console for debugging with sanitized error
   console.error('Error:', {
     message: errorMessage,
     code: errorCode,
     context,
-    error,
+    error: sanitizeError(error),
   });
 
   return errorMessage;

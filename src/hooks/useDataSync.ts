@@ -4,6 +4,32 @@ import type { Card } from '../types/card';
 import type { Template } from '../types/template';
 import type { DayCompletion, UserStreak } from '../types/dayCompletion';
 
+/**
+ * Shallow comparison for objects/arrays
+ * Returns true if values have changed at top level
+ */
+function hasShallowChanged<T>(prev: T | null, next: T): boolean {
+  if (prev === next) return false;
+  if (prev === null || next === null) return true;
+  if (typeof prev !== 'object' || typeof next !== 'object')
+    return prev !== next;
+
+  if (Array.isArray(prev) && Array.isArray(next)) {
+    if (prev.length !== next.length) return true;
+    return prev.some((val, i) => val !== next[i]);
+  }
+
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return true;
+
+  return prevKeys.some(
+    (key) =>
+      (prev as Record<string, unknown>)[key] !==
+      (next as Record<string, unknown>)[key]
+  );
+}
+
 interface FirebaseReturnType {
   initialized: boolean;
   debouncedSaveCards: (data: CardsByCategory) => void;
@@ -68,16 +94,18 @@ export function useDataSync({
           templates: loadedTemplates,
           dayCompletions: loadedDayCompletions,
           userStreak: loadedUserStreak,
-          hasData
+          hasData,
         } = await firebase.loadData();
 
         console.log('📦 Loaded data:', {
-          cardsCount: loadedCards ? Object.values(loadedCards).flat().length : 0,
+          cardsCount: loadedCards
+            ? Object.values(loadedCards).flat().length
+            : 0,
           dailyDeckCount: loadedDailyDeck?.length || 0,
           templatesCount: loadedTemplates?.length || 0,
           dayCompletionsCount: loadedDayCompletions?.length || 0,
           currentStreak: loadedUserStreak?.currentStreak || 0,
-          hasData
+          hasData,
         });
 
         if (loadedCards) {
@@ -110,45 +138,62 @@ export function useDataSync({
 
       loadInitialData();
     }
-  }, [firebase.initialized, hasLoadedOnce, firebase, setCards, setDailyDeck, setTemplates, setDayCompletions, setUserStreak]);
+  }, [
+    firebase.initialized,
+    hasLoadedOnce,
+    firebase,
+    setCards,
+    setDailyDeck,
+    setTemplates,
+    setDayCompletions,
+    setUserStreak,
+  ]);
 
   // Combined effect for all data syncing to reduce useEffect overhead
   useEffect(() => {
     if (!firebase.initialized || !hasLoadedOnce) return;
 
     // Check and save cards
-    if (cards !== lastSavedCardsRef.current) {
+    if (hasShallowChanged(lastSavedCardsRef.current, cards)) {
       console.log('📝 Cards changed, triggering debounced save...', {
-        cardsCount: Object.values(cards).flat().length
+        cardsCount: Object.values(cards).flat().length,
       });
       lastSavedCardsRef.current = cards;
       firebase.debouncedSaveCards(cards);
     }
 
     // Check and save daily deck
-    if (dailyDeck !== lastSavedDailyDeckRef.current) {
+    if (hasShallowChanged(lastSavedDailyDeckRef.current, dailyDeck)) {
       lastSavedDailyDeckRef.current = dailyDeck;
       firebase.debouncedSaveDailyDeck(dailyDeck);
     }
 
     // Check and save templates
-    if (templates !== lastSavedTemplatesRef.current) {
+    if (hasShallowChanged(lastSavedTemplatesRef.current, templates)) {
       lastSavedTemplatesRef.current = templates;
       firebase.debouncedSaveTemplates(templates);
     }
 
     // Check and save day completions
-    if (dayCompletions !== lastSavedDayCompletionsRef.current) {
+    if (hasShallowChanged(lastSavedDayCompletionsRef.current, dayCompletions)) {
       lastSavedDayCompletionsRef.current = dayCompletions;
       firebase.debouncedSaveDayCompletions(dayCompletions);
     }
 
     // Check and save user streak
-    if (userStreak !== lastSavedUserStreakRef.current) {
+    if (hasShallowChanged(lastSavedUserStreakRef.current, userStreak)) {
       lastSavedUserStreakRef.current = userStreak;
       firebase.debouncedSaveUserStreak(userStreak);
     }
-  }, [cards, dailyDeck, templates, dayCompletions, userStreak, firebase, hasLoadedOnce]);
+  }, [
+    cards,
+    dailyDeck,
+    templates,
+    dayCompletions,
+    userStreak,
+    firebase,
+    hasLoadedOnce,
+  ]);
 
   useEffect(() => {
     if (!firebase.initialized || !hasLoadedOnce) return;

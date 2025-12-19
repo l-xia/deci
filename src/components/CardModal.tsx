@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import DOMPurify from 'isomorphic-dompurify';
 import type { Card } from '../types';
 import { VALIDATION_RULES } from '../utils/validators';
 import { cardSchema, type CardFormData } from '../utils/validation/schemas';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { ScheduleSelector } from './ScheduleSelector';
+import { FormFieldCounter } from './FormFieldCounter';
 import { SCHEDULE_PRESETS } from '../utils/scheduling';
 
 interface CardModalProps {
@@ -15,8 +17,15 @@ interface CardModalProps {
   onClose: () => void;
 }
 
-function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalProps) {
-  const [scheduleType, setScheduleType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+function CardModal({
+  card,
+  isOneTimeEdit = false,
+  onSave,
+  onClose,
+}: CardModalProps) {
+  const [scheduleType, setScheduleType] = useState<
+    'daily' | 'weekly' | 'monthly'
+  >('daily');
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
 
   const {
@@ -58,8 +67,10 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
 
   const onSubmit = (data: CardFormData) => {
     const cardData: Partial<Card> = {
-      title: data.title.trim(),
-      description: data.description?.trim() || '',
+      title: DOMPurify.sanitize(data.title.trim(), { ALLOWED_TAGS: [] }),
+      description: DOMPurify.sanitize(data.description?.trim() || '', {
+        ALLOWED_TAGS: [],
+      }),
       recurrenceType: data.recurrenceType,
       timesUsed: card?.timesUsed || 0,
     };
@@ -97,7 +108,11 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
       <div className="bg-white rounded-md shadow-2xl max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">
-            {isOneTimeEdit ? 'Edit Card (Today Only)' : card ? 'Edit Card' : 'New Card'}
+            {isOneTimeEdit
+              ? 'Edit Card (Today Only)'
+              : card
+                ? 'Edit Card'
+                : 'New Card'}
           </h2>
           <button
             onClick={onClose}
@@ -110,7 +125,10 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {!isOneTimeEdit && (
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -118,6 +136,8 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
                 id="title"
                 {...register('title')}
                 maxLength={VALIDATION_RULES.TITLE_MAX_LENGTH}
+                required
+                aria-required="true"
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent ${
                   errors.title
                     ? 'border-red-500 focus:ring-red-500'
@@ -125,23 +145,19 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
                 }`}
                 placeholder="e.g., Walk the dog"
               />
-              <div className="flex justify-between items-center mt-1">
-                {errors.title ? (
-                  <p className="text-xs text-red-500">
-                    {errors.title.message}
-                  </p>
-                ) : (
-                  <div></div>
-                )}
-                <span className="text-xs text-gray-400">
-                  {title?.length || 0}/{VALIDATION_RULES.TITLE_MAX_LENGTH}
-                </span>
-              </div>
+              <FormFieldCounter
+                error={errors.title?.message}
+                currentLength={title?.length || 0}
+                maxLength={VALIDATION_RULES.TITLE_MAX_LENGTH}
+              />
             </div>
           )}
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Description
             </label>
             <textarea
@@ -156,22 +172,18 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
               }`}
               placeholder="Optional details..."
             />
-            <div className="flex justify-between items-center mt-1">
-              {errors.description ? (
-                <p className="text-xs text-red-500">
-                  {errors.description.message}
-                </p>
-              ) : (
-                <div></div>
-              )}
-              <span className="text-xs text-gray-400">
-                {description?.length || 0}/{VALIDATION_RULES.DESCRIPTION_MAX_LENGTH}
-              </span>
-            </div>
+            <FormFieldCounter
+              error={errors.description?.message}
+              currentLength={description?.length || 0}
+              maxLength={VALIDATION_RULES.DESCRIPTION_MAX_LENGTH}
+            />
           </div>
 
           <div>
-            <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="duration"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Suggested Duration (minutes)
             </label>
             <input
@@ -193,7 +205,8 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
               </p>
             ) : (
               <p className="text-xs text-gray-500 mt-1">
-                Between {VALIDATION_RULES.DURATION_MIN} and {VALIDATION_RULES.DURATION_MAX} minutes
+                Between {VALIDATION_RULES.DURATION_MIN} and{' '}
+                {VALIDATION_RULES.DURATION_MAX} minutes
               </p>
             )}
           </div>
@@ -213,7 +226,9 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
                   />
                   <div>
                     <div className="font-medium text-sm">Always Available</div>
-                    <div className="text-xs text-gray-500">Can be added to daily deck unlimited times (e.g., Reading)</div>
+                    <div className="text-xs text-gray-500">
+                      Can be added to daily deck unlimited times (e.g., Reading)
+                    </div>
                   </div>
                 </label>
 
@@ -226,7 +241,9 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
                   />
                   <div className="flex-1">
                     <div className="font-medium text-sm">Limited Uses</div>
-                    <div className="text-xs text-gray-500 mb-1">Can be added X times per day (e.g., Walk dog 3x)</div>
+                    <div className="text-xs text-gray-500 mb-1">
+                      Can be added X times per day (e.g., Walk dog 3x)
+                    </div>
                     {recurrenceType === 'limited' && (
                       <div className="mt-1">
                         <input
@@ -260,7 +277,9 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
                   />
                   <div>
                     <div className="font-medium text-sm">One-Time Only</div>
-                    <div className="text-xs text-gray-500">Disappears after being added once (e.g., Take out trash)</div>
+                    <div className="text-xs text-gray-500">
+                      Disappears after being added once (e.g., Take out trash)
+                    </div>
                   </div>
                 </label>
 
@@ -273,7 +292,10 @@ function CardModal({ card, isOneTimeEdit = false, onSave, onClose }: CardModalPr
                   />
                   <div className="flex-1">
                     <div className="font-medium text-sm">Scheduled</div>
-                    <div className="text-xs text-gray-500 mb-2">Only available on specific days (e.g., Team meeting every Monday)</div>
+                    <div className="text-xs text-gray-500 mb-2">
+                      Only available on specific days (e.g., Team meeting every
+                      Monday)
+                    </div>
                     {recurrenceType === 'scheduled' && (
                       <div className="mt-2 p-3 bg-gray-50 rounded-md">
                         <ScheduleSelector
