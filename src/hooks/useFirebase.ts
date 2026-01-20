@@ -81,6 +81,20 @@ export function useFirebase() {
     [createDebouncedSave]
   );
 
+  const debouncedSaveDeckDate = useMemo(
+    () => createDebouncedSave(STORAGE_KEYS.DECK_DATE as StorageKey, 'deckDate'),
+    [createDebouncedSave]
+  );
+
+  const debouncedSaveDeckLastEditedDate = useMemo(
+    () =>
+      createDebouncedSave(
+        STORAGE_KEYS.DECK_LAST_EDITED_DATE as StorageKey,
+        'deckLastEditedDate'
+      ),
+    [createDebouncedSave]
+  );
+
   const debouncedSaveTemplates = useMemo(
     () =>
       createDebouncedSave(STORAGE_KEYS.TEMPLATES as StorageKey, 'templates'),
@@ -105,6 +119,8 @@ export function useFirebase() {
   const loadData = useCallback(async (): Promise<{
     cards: CardsByCategory | null;
     dailyDeck: Card[] | null;
+    deckDate: string | null;
+    deckLastEditedDate: string | null;
     templates: Template[] | null;
     dayCompletions: DayCompletion[] | null;
     userStreak: UserStreak | null;
@@ -114,6 +130,8 @@ export function useFirebase() {
       return {
         cards: null,
         dailyDeck: null,
+        deckDate: null,
+        deckLastEditedDate: null,
         templates: null,
         dayCompletions: null,
         userStreak: null,
@@ -124,12 +142,16 @@ export function useFirebase() {
       const [
         cardsResult,
         dailyDeckResult,
+        deckDateResult,
+        deckLastEditedDateResult,
         templatesResult,
         dayCompletionsResult,
         userStreakResult,
       ] = await Promise.all([
         firebaseStorage.load(STORAGE_KEYS.CARDS as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.DAILY_DECK as StorageKey),
+        firebaseStorage.load(STORAGE_KEYS.DECK_DATE as StorageKey),
+        firebaseStorage.load(STORAGE_KEYS.DECK_LAST_EDITED_DATE as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.TEMPLATES as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.DAY_COMPLETIONS as StorageKey),
         firebaseStorage.load(STORAGE_KEYS.USER_STREAK as StorageKey),
@@ -140,6 +162,15 @@ export function useFirebase() {
       }
       if (!dailyDeckResult.success) {
         console.error('Failed to load daily deck:', dailyDeckResult.error);
+      }
+      if (!deckDateResult.success) {
+        console.error('Failed to load deck date:', deckDateResult.error);
+      }
+      if (!deckLastEditedDateResult.success) {
+        console.error(
+          'Failed to load deck last edited date:',
+          deckLastEditedDateResult.error
+        );
       }
       if (!templatesResult.success) {
         console.error('Failed to load templates:', templatesResult.error);
@@ -157,6 +188,8 @@ export function useFirebase() {
       return {
         cards: cardsResult.data as CardsByCategory | null,
         dailyDeck: dailyDeckResult.data as Card[] | null,
+        deckDate: deckDateResult.data as string | null,
+        deckLastEditedDate: deckLastEditedDateResult.data as string | null,
         templates: templatesResult.data as Template[] | null,
         dayCompletions: dayCompletionsResult.data as DayCompletion[] | null,
         userStreak: userStreakResult.data as UserStreak | null,
@@ -171,6 +204,8 @@ export function useFirebase() {
       return {
         cards: null,
         dailyDeck: null,
+        deckDate: null,
+        deckLastEditedDate: null,
         templates: null,
         dayCompletions: null,
         userStreak: null,
@@ -194,6 +229,12 @@ export function useFirebase() {
     if (debouncedSaveDailyDeck?.flush) {
       debouncedSaveDailyDeck.flush();
     }
+    if (debouncedSaveDeckDate?.flush) {
+      debouncedSaveDeckDate.flush();
+    }
+    if (debouncedSaveDeckLastEditedDate?.flush) {
+      debouncedSaveDeckLastEditedDate.flush();
+    }
     if (debouncedSaveTemplates?.flush) {
       debouncedSaveTemplates.flush();
     }
@@ -206,6 +247,8 @@ export function useFirebase() {
   }, [
     debouncedSaveCards,
     debouncedSaveDailyDeck,
+    debouncedSaveDeckDate,
+    debouncedSaveDeckLastEditedDate,
     debouncedSaveTemplates,
     debouncedSaveDayCompletions,
     debouncedSaveUserStreak,
@@ -215,6 +258,8 @@ export function useFirebase() {
     return () => {
       debouncedSaveCards?.cancel?.();
       debouncedSaveDailyDeck?.cancel?.();
+      debouncedSaveDeckDate?.cancel?.();
+      debouncedSaveDeckLastEditedDate?.cancel?.();
       debouncedSaveTemplates?.cancel?.();
       debouncedSaveDayCompletions?.cancel?.();
       debouncedSaveUserStreak?.cancel?.();
@@ -222,6 +267,8 @@ export function useFirebase() {
   }, [
     debouncedSaveCards,
     debouncedSaveDailyDeck,
+    debouncedSaveDeckDate,
+    debouncedSaveDeckLastEditedDate,
     debouncedSaveTemplates,
     debouncedSaveDayCompletions,
     debouncedSaveUserStreak,
@@ -233,6 +280,8 @@ export function useFirebase() {
     saveError,
     debouncedSaveCards,
     debouncedSaveDailyDeck,
+    debouncedSaveDeckDate,
+    debouncedSaveDeckLastEditedDate,
     debouncedSaveTemplates,
     debouncedSaveDayCompletions,
     debouncedSaveUserStreak,

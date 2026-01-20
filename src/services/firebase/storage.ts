@@ -60,7 +60,7 @@ class FirebaseStorageManager {
 
       console.log(`💾 Saving ${key} to Firebase...`, {
         path: `users/${userId}/data/${key}`,
-        dataSize: JSON.stringify(data).length,
+        dataSize: data !== undefined ? JSON.stringify(data).length : 0,
       });
 
       await retryWithBackoff(

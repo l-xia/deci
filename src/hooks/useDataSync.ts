@@ -34,12 +34,16 @@ interface FirebaseReturnType {
   initialized: boolean;
   debouncedSaveCards: (data: CardsByCategory) => void;
   debouncedSaveDailyDeck: (data: Card[]) => void;
+  debouncedSaveDeckDate: (data: string | null) => void;
+  debouncedSaveDeckLastEditedDate: (data: string | null) => void;
   debouncedSaveTemplates: (data: Template[]) => void;
   debouncedSaveDayCompletions: (data: DayCompletion[]) => void;
   debouncedSaveUserStreak: (data: UserStreak) => void;
   loadData: () => Promise<{
     cards: CardsByCategory | null;
     dailyDeck: Card[] | null;
+    deckDate: string | null;
+    deckLastEditedDate: string | null;
     templates: Template[] | null;
     dayCompletions: DayCompletion[] | null;
     userStreak: UserStreak | null;
@@ -54,11 +58,15 @@ interface DataSyncOptions {
   firebase: FirebaseReturnType;
   cards: CardsByCategory;
   dailyDeck: Card[];
+  deckDate: string | null;
+  deckLastEditedDate: string | null;
   templates: Template[];
   dayCompletions: DayCompletion[];
   userStreak: UserStreak;
   setCards: (cards: CardsByCategory) => void;
   setDailyDeck: (deck: Card[]) => void;
+  setDeckDate: (date: string | null) => void;
+  setDeckLastEditedDate: (date: string | null) => void;
   setTemplates: (templates: Template[]) => void;
   setDayCompletions: (completions: DayCompletion[]) => void;
   setUserStreak: (streak: UserStreak) => void;
@@ -68,11 +76,15 @@ export function useDataSync({
   firebase,
   cards,
   dailyDeck,
+  deckDate,
+  deckLastEditedDate,
   templates,
   dayCompletions,
   userStreak,
   setCards,
   setDailyDeck,
+  setDeckDate,
+  setDeckLastEditedDate,
   setTemplates,
   setDayCompletions,
   setUserStreak,
@@ -80,6 +92,8 @@ export function useDataSync({
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const lastSavedCardsRef = useRef<CardsByCategory | null>(null);
   const lastSavedDailyDeckRef = useRef<Card[] | null>(null);
+  const lastSavedDeckDateRef = useRef<string | null>(null);
+  const lastSavedDeckLastEditedDateRef = useRef<string | null>(null);
   const lastSavedTemplatesRef = useRef<Template[] | null>(null);
   const lastSavedDayCompletionsRef = useRef<DayCompletion[] | null>(null);
   const lastSavedUserStreakRef = useRef<UserStreak | null>(null);
@@ -91,6 +105,8 @@ export function useDataSync({
         const {
           cards: loadedCards,
           dailyDeck: loadedDailyDeck,
+          deckDate: loadedDeckDate,
+          deckLastEditedDate: loadedDeckLastEditedDate,
           templates: loadedTemplates,
           dayCompletions: loadedDayCompletions,
           userStreak: loadedUserStreak,
@@ -102,6 +118,7 @@ export function useDataSync({
             ? Object.values(loadedCards).flat().length
             : 0,
           dailyDeckCount: loadedDailyDeck?.length || 0,
+          deckDate: loadedDeckDate,
           templatesCount: loadedTemplates?.length || 0,
           dayCompletionsCount: loadedDayCompletions?.length || 0,
           currentStreak: loadedUserStreak?.currentStreak || 0,
@@ -116,6 +133,16 @@ export function useDataSync({
         if (loadedDailyDeck) {
           setDailyDeck(loadedDailyDeck);
           lastSavedDailyDeckRef.current = loadedDailyDeck;
+        }
+
+        if (loadedDeckDate !== undefined) {
+          setDeckDate(loadedDeckDate);
+          lastSavedDeckDateRef.current = loadedDeckDate;
+        }
+
+        if (loadedDeckLastEditedDate !== undefined) {
+          setDeckLastEditedDate(loadedDeckLastEditedDate);
+          lastSavedDeckLastEditedDateRef.current = loadedDeckLastEditedDate;
         }
 
         if (loadedTemplates) {
@@ -144,6 +171,8 @@ export function useDataSync({
     firebase,
     setCards,
     setDailyDeck,
+    setDeckDate,
+    setDeckLastEditedDate,
     setTemplates,
     setDayCompletions,
     setUserStreak,
@@ -168,6 +197,18 @@ export function useDataSync({
       firebase.debouncedSaveDailyDeck(dailyDeck);
     }
 
+    // Check and save deck date
+    if (lastSavedDeckDateRef.current !== deckDate) {
+      lastSavedDeckDateRef.current = deckDate;
+      firebase.debouncedSaveDeckDate(deckDate);
+    }
+
+    // Check and save deck last edited date
+    if (lastSavedDeckLastEditedDateRef.current !== deckLastEditedDate) {
+      lastSavedDeckLastEditedDateRef.current = deckLastEditedDate;
+      firebase.debouncedSaveDeckLastEditedDate(deckLastEditedDate);
+    }
+
     // Check and save templates
     if (hasShallowChanged(lastSavedTemplatesRef.current, templates)) {
       lastSavedTemplatesRef.current = templates;
@@ -188,6 +229,8 @@ export function useDataSync({
   }, [
     cards,
     dailyDeck,
+    deckDate,
+    deckLastEditedDate,
     templates,
     dayCompletions,
     userStreak,

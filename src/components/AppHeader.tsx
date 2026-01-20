@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { ArrowPathIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChartBarIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowPathIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ChevronDownIcon,
+  ChartBarIcon,
+  ArchiveBoxIcon,
+  ArrowRightOnRectangleIcon,
+} from '@heroicons/react/24/outline';
 import deciLogo from '../assets/deci_logo.svg';
 import LoadingSpinner from './LoadingSpinner';
+import { GlobalTimer } from './GlobalTimer/GlobalTimer';
 import type { SaveStatus } from '../types/common';
 
 interface AppHeaderProps {
@@ -32,15 +41,20 @@ export const AppHeader = ({
         <img src={deciLogo} alt="Deci" className="h-12" />
 
         <div className="flex items-center gap-3">
+          <GlobalTimer />
+
           {isUsingFirebase && (
             <button
               onClick={onRefresh}
               disabled={isRefreshing || saveStatus === 'saving'}
               className={`flex items-center gap-2 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 underline underline-offset-4 ${
-                saveStatus === 'saving' ? 'decoration-blue-500 text-blue-500' :
-                saveStatus === 'saved' ? 'decoration-green-600 text-green-600' :
-                saveStatus === 'error' ? 'decoration-red-600 text-red-600' :
-                'decoration-gray-400 text-gray-600'
+                saveStatus === 'saving'
+                  ? 'decoration-blue-500 text-blue-500'
+                  : saveStatus === 'saved'
+                    ? 'decoration-green-600 text-green-600'
+                    : saveStatus === 'error'
+                      ? 'decoration-red-600 text-red-600'
+                      : 'decoration-gray-400 text-gray-600'
               }`}
               title={isRefreshing ? 'Refreshing...' : 'Refresh data from cloud'}
             >
@@ -54,19 +68,30 @@ export const AppHeader = ({
                 <XCircleIcon className="w-3 h-3 text-red-600" />
               )}
               {!saveStatus && (
-                <ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <ArrowPathIcon
+                  className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+                />
               )}
-              <span className={
-                saveStatus === 'saving' ? 'text-blue-500' :
-                saveStatus === 'saved' ? 'text-green-600' :
-                saveStatus === 'error' ? 'text-red-600' :
-                'text-gray-600'
-              }>
-                {isRefreshing ? 'Refreshing...' :
-                 saveStatus === 'saving' ? 'Syncing...' :
-                 saveStatus === 'saved' ? 'Synced' :
-                 saveStatus === 'error' ? 'Sync error' :
-                 'Cloud'}
+              <span
+                className={
+                  saveStatus === 'saving'
+                    ? 'text-blue-500'
+                    : saveStatus === 'saved'
+                      ? 'text-green-600'
+                      : saveStatus === 'error'
+                        ? 'text-red-600'
+                        : 'text-gray-600'
+                }
+              >
+                {isRefreshing
+                  ? 'Refreshing...'
+                  : saveStatus === 'saving'
+                    ? 'Syncing...'
+                    : saveStatus === 'saved'
+                      ? 'Synced'
+                      : saveStatus === 'error'
+                        ? 'Sync error'
+                        : 'Cloud'}
               </span>
               {saveStatus === 'error' && (
                 <span
@@ -89,7 +114,9 @@ export const AppHeader = ({
               className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors"
             >
               <span>{userEmail}</span>
-              <ChevronDownIcon className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDownIcon
+                className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}
+              />
             </button>
 
             {userMenuOpen && (
@@ -106,6 +133,14 @@ export const AppHeader = ({
                   >
                     <ChartBarIcon className="w-4 h-4 inline-block mr-2" />
                     Analytics
+                  </Link>
+                  <Link
+                    to="/archive"
+                    className="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <ArchiveBoxIcon className="w-4 h-4 inline-block mr-2" />
+                    Archive
                   </Link>
                   <button
                     onClick={() => {

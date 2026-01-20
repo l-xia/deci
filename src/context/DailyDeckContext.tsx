@@ -29,7 +29,8 @@ export function DailyDeckProvider({
     cards,
     setCards,
     dailyDeckState.dailyDeck,
-    dailyDeckState.setDailyDeck
+    dailyDeckState.setDailyDeck,
+    dailyDeckState.setDeckLastEditedDate
   );
 
   const value: DailyDeckContextValue = {

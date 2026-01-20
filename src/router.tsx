@@ -1,6 +1,12 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+} from '@tanstack/react-router';
 import App from './App';
 import AnalyticsPage from './pages/AnalyticsPage';
+import ArchivePage from './pages/ArchivePage';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 
@@ -26,7 +32,17 @@ const analyticsRoute = createRoute({
   component: AnalyticsPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, analyticsRoute]);
+const archiveRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/archive',
+  component: ArchivePage,
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  analyticsRoute,
+  archiveRoute,
+]);
 
 export const router = createRouter({ routeTree });
 

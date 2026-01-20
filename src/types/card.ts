@@ -1,4 +1,5 @@
 import type { CategoryKey } from './category';
+import type { TimeEntry } from './timer';
 
 /**
  * Defines how often a card can be added to the daily deck
@@ -70,6 +71,10 @@ export interface Card {
   dailyNote?: string;
   /** Active timer state synced across devices (daily deck only) */
   timerState?: TimerState;
+  /** Time entries tracking detailed work sessions with descriptions (daily deck only) */
+  timeEntries?: TimeEntry[];
+  /** Whether this card template is archived */
+  archived?: boolean;
 }
 
 export interface CardsByCategory {

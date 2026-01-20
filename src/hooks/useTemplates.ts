@@ -9,7 +9,7 @@ export function useTemplates(initialTemplates: Template[] = []) {
     const newTemplate: Template = {
       id: generateId('template'),
       name,
-      cards: dailyDeck.map(card => ({
+      cards: dailyDeck.map((card) => ({
         id: card.id,
         sourceCategory: (card.sourceCategory || 'default') as CategoryKey,
       })),
@@ -17,38 +17,79 @@ export function useTemplates(initialTemplates: Template[] = []) {
       cardCount: dailyDeck.length,
     };
 
-    setTemplates(prev => [...prev, newTemplate]);
+    setTemplates((prev) => [...prev, newTemplate]);
 
     return newTemplate;
   }, []);
 
   const deleteTemplate = useCallback((templateId: string) => {
-    setTemplates(prev => prev.filter(t => t.id !== templateId));
+    setTemplates((prev) => prev.filter((t) => t.id !== templateId));
   }, []);
 
-  const updateTemplate = useCallback((
-    templateId: string,
-    updates: Partial<Omit<Template, 'id' | 'createdAt'>>
-  ) => {
-    setTemplates(prev =>
-      prev.map(template =>
+  const updateTemplate = useCallback(
+    (
+      templateId: string,
+      updates: Partial<Omit<Template, 'id' | 'createdAt'>>
+    ) => {
+      setTemplates((prev) =>
+        prev.map((template) =>
+          template.id === templateId
+            ? { ...template, ...updates, updatedAt: new Date().toISOString() }
+            : template
+        )
+      );
+    },
+    []
+  );
+
+  const getTemplate = useCallback(
+    (templateId: string): Template | undefined => {
+      return templates.find((t) => t.id === templateId);
+    },
+    [templates]
+  );
+
+  const getTemplatesSorted = useCallback(
+    (ascending: boolean = false): Template[] => {
+      return [...templates].sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return ascending ? dateA - dateB : dateB - dateA;
+      });
+    },
+    [templates]
+  );
+
+  const archiveTemplate = useCallback((templateId: string) => {
+    setTemplates((prev) =>
+      prev.map((template) =>
         template.id === templateId
-          ? { ...template, ...updates, updatedAt: new Date().toISOString() }
+          ? { ...template, archived: true, updatedAt: new Date().toISOString() }
           : template
       )
     );
   }, []);
 
-  const getTemplate = useCallback((templateId: string): Template | undefined => {
-    return templates.find(t => t.id === templateId);
+  const unarchiveTemplate = useCallback((templateId: string) => {
+    setTemplates((prev) =>
+      prev.map((template) =>
+        template.id === templateId
+          ? {
+              ...template,
+              archived: false,
+              updatedAt: new Date().toISOString(),
+            }
+          : template
+      )
+    );
+  }, []);
+
+  const getActiveTemplates = useCallback((): Template[] => {
+    return templates.filter((t) => !t.archived);
   }, [templates]);
 
-  const getTemplatesSorted = useCallback((ascending: boolean = false): Template[] => {
-    return [...templates].sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return ascending ? dateA - dateB : dateB - dateA;
-    });
+  const getArchivedTemplates = useCallback((): Template[] => {
+    return templates.filter((t) => t.archived);
   }, [templates]);
 
   return {
@@ -59,5 +100,9 @@ export function useTemplates(initialTemplates: Template[] = []) {
     updateTemplate,
     getTemplate,
     getTemplatesSorted,
+    archiveTemplate,
+    unarchiveTemplate,
+    getActiveTemplates,
+    getArchivedTemplates,
   };
 }

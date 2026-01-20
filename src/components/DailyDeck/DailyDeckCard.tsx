@@ -1,10 +1,10 @@
 import { Draggable } from '@hello-pangea/dnd';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { Card } from '../../types';
-import Timer, { type TimerRef } from '../Timer';
 import { getCategoryColors } from '../../utils/categories';
 import { formatScheduleDescription } from '../../utils/scheduling';
-import { CheckIcon } from '@heroicons/react/24/outline';
+import { formatTimerDuration } from '../../utils/formatTimerDuration';
+import { CheckIcon, ClockIcon } from '@heroicons/react/24/outline';
 import CardContextMenu from './CardContextMenu';
 import { CompletedCardBadge } from '../CompletedCardBadge';
 import { useLongPress } from '../../hooks/useLongPress';
@@ -22,13 +22,30 @@ interface DailyDeckCardProps {
   onReturnToStack?: (index: number) => void;
 }
 
-function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExpanded, onUpdateCard, onEditCard, onOneTimeEdit, onDoubleClick, onReturnToStack }: DailyDeckCardProps) {
-  const timerRef = useRef<TimerRef>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+function DailyDeckCard({
+  card,
+  index,
+  isFirstIncomplete,
+  isExpanded,
+  onToggleExpanded,
+  onUpdateCard,
+  onEditCard,
+  onOneTimeEdit,
+  onDoubleClick,
+  onReturnToStack,
+}: DailyDeckCardProps) {
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const isFirstCard = isFirstIncomplete && !card.completed;
   const colors = getCategoryColors(card.sourceCategory || 'default');
   const borderColor = colors.border;
   const highlightColor = colors.highlight;
+
+  // Calculate total tracked time from time entries
+  const trackedSeconds =
+    card.timeEntries?.reduce((sum, entry) => sum + entry.seconds, 0) || 0;
 
   const longPressHandlers = useLongPress({
     onLongPress: (e) => {
@@ -40,18 +57,18 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
   });
 
   const handleMarkComplete = () => {
-    const timeSpent = timerRef.current?.getSeconds() || 0;
+    // Calculate timeSpent from timeEntries (global timer tracks this)
+    const timeSpent =
+      card.timeEntries?.reduce((sum, entry) => sum + entry.seconds, 0) || 0;
+
     const updates: Partial<Card> = {
       completed: true,
       completedAt: new Date().toISOString(),
       timeSpent,
     };
-    // Clear timer state by resetting it
-    if (card.timerState) {
-      updates.timerState = { accumulatedSeconds: 0, isPaused: true };
-    }
+
     onUpdateCard(index, updates);
-    // Collapse after marking complete
+
     if (isExpanded) {
       onToggleExpanded();
     }
@@ -86,8 +103,8 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
           // Override the drag handle's onContextMenu to show our custom menu
           const dragHandleProps = {
             ...provided.dragHandleProps,
-            onContextMenu: handleContextMenu,  // Desktop right-click
-            ...longPressHandlers,               // Mobile long-press
+            onContextMenu: handleContextMenu, // Desktop right-click
+            ...longPressHandlers, // Mobile long-press
           };
 
           return (
@@ -110,112 +127,135 @@ function DailyDeckCard({ card, index, isFirstIncomplete, isExpanded, onToggleExp
                 ...provided.draggableProps.style,
               }}
             >
-          {isFirstCard ? (
-            <>
-              <div className="flex justify-between items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className={`font-bold ${
-                    isExpanded ? 'text-3xl' : 'text-2xl'
-                  } ${card.completed ? 'text-gray-500' : 'text-gray-900'}`}>
+              {isFirstCard ? (
+                <>
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className={`font-bold ${
+                          isExpanded ? 'text-3xl' : 'text-2xl'
+                        } ${card.completed ? 'text-gray-500' : 'text-gray-900'}`}
+                      >
+                        <span className="relative inline-block">
+                          <span className="relative z-10">{card.title}</span>
+                          {!card.completed && (
+                            <span
+                              className={`absolute bottom-0 left-0 right-0 ${highlightColor} opacity-50 z-0 ${
+                                isExpanded ? 'h-2.5' : 'h-2'
+                              }`}
+                            ></span>
+                          )}
+                        </span>
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {trackedSeconds > 0 && !card.completed && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-full bg-green-100 text-green-800">
+                          <ClockIcon className="w-4 h-4" />
+                          {formatTimerDuration(trackedSeconds)}
+                        </span>
+                      )}
+                      {card.duration && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-full ${
+                            card.completed
+                              ? 'bg-gray-200 text-gray-600'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {card.duration} min
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <>
+                      {card.description && (
+                        <p
+                          className={`text-lg mt-4 mb-4 whitespace-pre-line ${
+                            card.completed ? 'text-gray-600' : 'text-gray-700'
+                          }`}
+                        >
+                          {card.description}
+                        </p>
+                      )}
+
+                      {card.scheduleConfig && (
+                        <div className="text-sm text-gray-500 italic mb-2">
+                          📅 {formatScheduleDescription(card.scheduleConfig)}
+                        </div>
+                      )}
+
+                      {card.completed && (
+                        <CompletedCardBadge
+                          timeSpent={card.timeSpent}
+                          completedAt={card.completedAt}
+                          size="md"
+                        />
+                      )}
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <h3
+                    className={`text-xl font-semibold flex-1 ${
+                      card.completed ? 'text-gray-500' : 'text-gray-900'
+                    }`}
+                  >
                     <span className="relative inline-block">
                       <span className="relative z-10">{card.title}</span>
                       {!card.completed && (
-                        <span className={`absolute bottom-0 left-0 right-0 ${highlightColor} opacity-50 z-0 ${
-                          isExpanded ? 'h-2.5' : 'h-2'
-                        }`}></span>
+                        <span
+                          className={`absolute bottom-0 left-0 right-0 h-2 ${highlightColor} opacity-50 z-0`}
+                        ></span>
                       )}
                     </span>
                   </h3>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {card.completed && (
+                      <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    )}
+                    {trackedSeconds > 0 && !card.completed && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 bg-green-100 text-green-800">
+                        <ClockIcon className="w-3 h-3" />
+                        {formatTimerDuration(trackedSeconds)}
+                      </span>
+                    )}
+                    {card.duration && (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
+                          card.completed
+                            ? 'bg-gray-200 text-gray-600'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {card.duration} min
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {card.duration && (
-                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-full ${
-                      card.completed ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {card.duration} min
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {isExpanded && (
-                <>
-                  {card.description && (
-                    <p className={`text-lg mt-4 mb-4 whitespace-pre-line ${
-                      card.completed ? 'text-gray-600' : 'text-gray-700'
-                    }`}>{card.description}</p>
-                  )}
-
-                  {card.scheduleConfig && (
-                    <div className="text-sm text-gray-500 italic mb-2">
-                      📅 {formatScheduleDescription(card.scheduleConfig)}
-                    </div>
-                  )}
-
-                  {!card.completed && (
-                    <Timer
-                      ref={timerRef}
-                      card={card}
-                      onComplete={handleMarkComplete}
-                      onTimerStateChange={(state) => onUpdateCard(index, { timerState: state })}
-                    />
-                  )}
-
-                  {card.completed && (
-                    <CompletedCardBadge
-                      timeSpent={card.timeSpent}
-                      completedAt={card.completedAt}
-                      size="md"
-                    />
-                  )}
-                </>
               )}
-            </>
-          ) : (
-            <div className="flex justify-between items-center">
-              <h3 className={`text-xl font-semibold flex-1 ${
-                card.completed ? 'text-gray-500' : 'text-gray-900'
-              }`}>
-                <span className="relative inline-block">
-                  <span className="relative z-10">{card.title}</span>
-                  {!card.completed && (
-                    <span className={`absolute bottom-0 left-0 right-0 h-2 ${highlightColor} opacity-50 z-0`}></span>
-                  )}
-                </span>
-              </h3>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {card.completed && (
-                  <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
-                )}
-                {card.duration && (
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
-                    card.completed ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {card.duration} min
-                  </span>
-                )}
-              </div>
             </div>
-          )}
-        </div>
-        );
+          );
         }}
       </Draggable>
 
-    {contextMenu && (
-      <CardContextMenu
-        x={contextMenu.x}
-        y={contextMenu.y}
-        isCompleted={!!card.completed}
-        onOneTimeEdit={handleOneTimeEdit}
-        onEdit={() => onEditCard(index)}
-        onMarkComplete={handleMarkComplete}
-        onMarkIncomplete={handleMarkIncomplete}
-        onReturnToStack={handleReturnToStack}
-        onClose={() => setContextMenu(null)}
-      />
-    )}
-  </>
+      {contextMenu && (
+        <CardContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          isCompleted={!!card.completed}
+          onOneTimeEdit={handleOneTimeEdit}
+          onEdit={() => onEditCard(index)}
+          onMarkComplete={handleMarkComplete}
+          onMarkIncomplete={handleMarkIncomplete}
+          onReturnToStack={handleReturnToStack}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </>
   );
 }
 

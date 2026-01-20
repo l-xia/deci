@@ -5,13 +5,18 @@ import { z } from 'zod';
 import type { Template } from '../types';
 import { VALIDATION_RULES } from '../utils/validators';
 import { FormFieldCounter } from './FormFieldCounter';
-import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import {
+  TrashIcon,
+  PlusIcon,
+  ArchiveBoxIcon,
+} from '@heroicons/react/24/outline';
 
 interface TemplateManagerProps {
   templates: Template[];
   onSave: (name: string) => void;
   onLoad: (templateId: string) => void;
   onDelete: (templateId: string) => void;
+  onArchive: (templateId: string) => void;
   hasDailyDeck: boolean;
 }
 
@@ -32,6 +37,7 @@ function TemplateManager({
   onSave,
   onLoad,
   onDelete,
+  onArchive,
   hasDailyDeck,
 }: TemplateManagerProps) {
   const [isSaving, setIsSaving] = useState(false);
@@ -70,41 +76,56 @@ function TemplateManager({
   return (
     <div className="p-2">
       {/* Saved Templates List */}
-      {templates.length > 0 && (
+      {templates.filter((t) => !t.archived).length > 0 && (
         <>
           <div className="text-xs font-medium text-gray-500 uppercase px-2 py-1 mb-1">
             Saved Templates
           </div>
-          {templates.map((template: Template) => (
-            <div
-              key={template.id}
-              className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md group"
-            >
-              <button
-                onClick={() => handleLoad(template.id)}
-                className="flex-1 text-left"
+          {templates
+            .filter((t) => !t.archived)
+            .map((template: Template) => (
+              <div
+                key={template.id}
+                className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md group"
               >
-                <div className="font-medium text-gray-800 text-sm">
-                  {template.name}
+                <button
+                  onClick={() => handleLoad(template.id)}
+                  className="flex-1 text-left"
+                >
+                  <div className="font-medium text-gray-800 text-sm">
+                    {template.name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {template.cards.length} cards •{' '}
+                    {new Date(template.createdAt).toLocaleDateString()}
+                  </div>
+                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (confirm(`Archive template "${template.name}"?`)) {
+                        onArchive(template.id);
+                      }
+                    }}
+                    className="p-1 text-gray-400 hover:text-yellow-600 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Archive template"
+                  >
+                    <ArchiveBoxIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete template "${template.name}"?`)) {
+                        onDelete(template.id);
+                      }
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Delete template"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {template.cards.length} cards •{' '}
-                  {new Date(template.createdAt).toLocaleDateString()}
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm(`Delete template "${template.name}"?`)) {
-                    onDelete(template.id);
-                  }
-                }}
-                className="p-1 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                title="Delete template"
-              >
-                <TrashIcon className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+              </div>
+            ))}
         </>
       )}
 
@@ -180,7 +201,7 @@ function TemplateManager({
       )}
 
       {/* Empty State */}
-      {templates.length === 0 && !hasDailyDeck && (
+      {templates.filter((t) => !t.archived).length === 0 && !hasDailyDeck && (
         <div className="p-4 text-center text-gray-500 text-sm">
           No templates yet. Add cards to your daily deck to save a template!
         </div>

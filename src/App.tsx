@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
+import { addDays } from 'date-fns';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import { DayCompletionModal } from './components/DayCompletionModal';
@@ -71,6 +72,9 @@ function AuthenticatedApp() {
         updatedDeck[editingDailyDeckIndex] = updatedCard;
         dailyDeck.setDailyDeck(updatedDeck);
 
+        // Track deck edit
+        dailyDeck.setDeckLastEditedDate(new Date().toISOString());
+
         // Only update source card if NOT one-time edit
         if (!isOneTimeEdit) {
           const sourceCategory = updatedCard.sourceCategory;
@@ -113,6 +117,14 @@ function AuthenticatedApp() {
     [cards, dailyDeck]
   );
 
+  const handleArchiveCard = useCallback(
+    (category: CategoryKey, cardId: string) => {
+      cards.archiveCard(category, cardId);
+      dailyDeck.removeCardById(cardId);
+    },
+    [cards, dailyDeck]
+  );
+
   const handleSaveTemplate = useCallback(
     (name: string) => {
       templates.saveTemplate(name, dailyDeck.dailyDeck);
@@ -137,6 +149,13 @@ function AuthenticatedApp() {
     [templates]
   );
 
+  const handleArchiveTemplate = useCallback(
+    (templateId: string) => {
+      templates.archiveTemplate(templateId);
+    },
+    [templates]
+  );
+
   const handleCompleteDay = useCallback(() => {
     const result = dayCompletion.completeDay(dailyDeck.dailyDeck);
     setCompletionData({
@@ -145,9 +164,15 @@ function AuthenticatedApp() {
     });
     setShowDayCompletionModal(true);
 
+    // Set deck date to tomorrow after completing day
+    dailyDeck.setDeckDate(addDays(new Date(), 1).toISOString());
+
+    // Clear last edited date since we're moving to a new day
+    dailyDeck.setDeckLastEditedDate(null);
+
     // Flush pending saves immediately to ensure day completion is saved
     firebase.flushPendingSaves();
-  }, [dayCompletion, dailyDeck.dailyDeck, firebase]);
+  }, [dayCompletion, dailyDeck, firebase]);
 
   const scrollToNextIncompleteCard = useCallback(() => {
     setTimeout(() => {
@@ -210,6 +235,9 @@ function AuthenticatedApp() {
       if (!card) return;
 
       const updatedCard = { ...card, ...updates };
+
+      // Track deck edit
+      dailyDeck.setDeckLastEditedDate(new Date().toISOString());
 
       // If marking as complete, reorder the deck
       if (updates.completed && !card.completed) {
@@ -341,11 +369,11 @@ function AuthenticatedApp() {
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
             <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
               <CardStacksSection
-                cards={cards.cards}
                 dailyDeck={dailyDeck.dailyDeck}
                 getAvailableCards={cards.getAvailableCards}
                 onAddCard={openModal}
                 onEditCard={(category, card) => openModal(category, card)}
+                onArchiveCard={handleArchiveCard}
                 onDeleteCard={handleDeleteCard}
               />
             </div>
@@ -357,11 +385,14 @@ function AuthenticatedApp() {
                 onSaveTemplate={handleSaveTemplate}
                 onLoadTemplate={handleLoadTemplate}
                 onDeleteTemplate={handleDeleteTemplate}
+                onArchiveTemplate={handleArchiveTemplate}
                 onUpdateCard={handleUpdateCard}
                 onEditCard={handleEditDailyDeckCard}
                 onOneTimeEditCard={handleOneTimeEditDailyDeckCard}
                 onReturnToStack={handleReturnToStack}
                 onCompleteDay={handleCompleteDay}
+                deckDate={dailyDeck.deckDate}
+                deckLastEditedDate={dailyDeck.deckLastEditedDate}
               />
             </div>
           </div>
@@ -387,6 +418,7 @@ function AuthenticatedApp() {
                 setShowTemplatePickerModal(true);
               } else {
                 dailyDeck.setDailyDeck([]);
+                // Deck date already set to tomorrow in handleCompleteDay
               }
             }}
           />
@@ -398,10 +430,12 @@ function AuthenticatedApp() {
             onSelectTemplate={(templateId) => {
               handleLoadTemplate(templateId);
               setShowTemplatePickerModal(false);
+              // Deck date will be set to today when template is loaded in loadFromTemplate
             }}
             onSkip={() => {
               dailyDeck.setDailyDeck([]);
               setShowTemplatePickerModal(false);
+              // Deck date already set to tomorrow in handleCompleteDay
             }}
             onClose={() => setShowTemplatePickerModal(false)}
           />
