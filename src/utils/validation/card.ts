@@ -86,7 +86,10 @@ export function validateDescription(description: string): ValidationResult {
     return {
       valid: false,
       error: ERROR_MESSAGES.DESCRIPTION_TOO_LONG,
-      sanitized: sanitized.substring(0, VALIDATION_RULES.DESCRIPTION_MAX_LENGTH),
+      sanitized: sanitized.substring(
+        0,
+        VALIDATION_RULES.DESCRIPTION_MAX_LENGTH
+      ),
     };
   }
 
@@ -97,7 +100,9 @@ export function validateDescription(description: string): ValidationResult {
   };
 }
 
-export function validateDuration(duration: string | number): NumericValidationResult {
+export function validateDuration(
+  duration: string | number
+): NumericValidationResult {
   if (!duration || duration === '') {
     return {
       valid: true,
@@ -106,7 +111,8 @@ export function validateDuration(duration: string | number): NumericValidationRe
     };
   }
 
-  const parsed = typeof duration === 'string' ? parseInt(duration, 10) : duration;
+  const parsed =
+    typeof duration === 'string' ? parseInt(duration, 10) : duration;
 
   if (isNaN(parsed)) {
     return {
@@ -116,7 +122,10 @@ export function validateDuration(duration: string | number): NumericValidationRe
     };
   }
 
-  if (parsed < VALIDATION_RULES.DURATION_MIN || parsed > VALIDATION_RULES.DURATION_MAX) {
+  if (
+    parsed < VALIDATION_RULES.DURATION_MIN ||
+    parsed > VALIDATION_RULES.DURATION_MAX
+  ) {
     return {
       valid: false,
       error: ERROR_MESSAGES.DURATION_INVALID,
@@ -131,7 +140,9 @@ export function validateDuration(duration: string | number): NumericValidationRe
   };
 }
 
-export function validateMaxUses(maxUses: string | number): NumericValidationResult {
+export function validateMaxUses(
+  maxUses: string | number
+): NumericValidationResult {
   if (!maxUses || maxUses === '') {
     return {
       valid: false,
@@ -150,7 +161,10 @@ export function validateMaxUses(maxUses: string | number): NumericValidationResu
     };
   }
 
-  if (parsed < VALIDATION_RULES.MAX_USES_MIN || parsed > VALIDATION_RULES.MAX_USES_MAX) {
+  if (
+    parsed < VALIDATION_RULES.MAX_USES_MIN ||
+    parsed > VALIDATION_RULES.MAX_USES_MAX
+  ) {
     return {
       valid: false,
       error: ERROR_MESSAGES.MAX_USES_INVALID,
@@ -165,7 +179,9 @@ export function validateMaxUses(maxUses: string | number): NumericValidationResu
   };
 }
 
-export function validateRecurrenceType(recurrenceType: string): BasicValidationResult {
+export function validateRecurrenceType(
+  recurrenceType: string
+): BasicValidationResult {
   const validTypes = ['always', 'once', 'limited'];
 
   if (!validTypes.includes(recurrenceType)) {
@@ -200,7 +216,10 @@ export function validateCategory(category: string): BasicValidationResult {
 export function validateTemplateName(name: string): ValidationResult {
   const sanitized = sanitizeInput(name);
 
-  if (!sanitized || sanitized.length < VALIDATION_RULES.TEMPLATE_NAME_MIN_LENGTH) {
+  if (
+    !sanitized ||
+    sanitized.length < VALIDATION_RULES.TEMPLATE_NAME_MIN_LENGTH
+  ) {
     return {
       valid: false,
       error: ERROR_MESSAGES.TEMPLATE_NAME_REQUIRED,
@@ -212,7 +231,10 @@ export function validateTemplateName(name: string): ValidationResult {
     return {
       valid: false,
       error: ERROR_MESSAGES.TEMPLATE_NAME_TOO_LONG,
-      sanitized: sanitized.substring(0, VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH),
+      sanitized: sanitized.substring(
+        0,
+        VALIDATION_RULES.TEMPLATE_NAME_MAX_LENGTH
+      ),
     };
   }
 
@@ -245,26 +267,34 @@ export function validateCard(cardData: CardInput): CardValidationResult {
   }
   sanitizedData.title = titleValidation.sanitized;
 
-  const descriptionValidation = validateDescription(String(cardData.description || ''));
+  const descriptionValidation = validateDescription(
+    String(cardData.description || '')
+  );
   if (!descriptionValidation.valid) {
     errors.description = descriptionValidation.error!;
   }
   sanitizedData.description = descriptionValidation.sanitized;
 
-  const durationValidation = validateDuration(cardData.duration as string | number);
+  const durationValidation = validateDuration(
+    cardData.duration as string | number
+  );
   if (!durationValidation.valid) {
     errors.duration = durationValidation.error!;
   }
   sanitizedData.duration = durationValidation.value;
 
-  const recurrenceValidation = validateRecurrenceType(String(cardData.recurrenceType || ''));
+  const recurrenceValidation = validateRecurrenceType(
+    String(cardData.recurrenceType || '')
+  );
   if (!recurrenceValidation.valid) {
     errors.recurrenceType = recurrenceValidation.error!;
   }
   sanitizedData.recurrenceType = String(cardData.recurrenceType);
 
   if (cardData.recurrenceType === 'limited') {
-    const maxUsesValidation = validateMaxUses(cardData.maxUses as string | number);
+    const maxUsesValidation = validateMaxUses(
+      cardData.maxUses as string | number
+    );
     if (!maxUsesValidation.valid) {
       errors.maxUses = maxUsesValidation.error!;
     }
@@ -278,7 +308,17 @@ export function validateCard(cardData: CardInput): CardValidationResult {
   };
 }
 
-export function validateLoadedData(data: unknown, expectedType: 'cards' | 'dailyDeck' | 'templates' | 'dayCompletions' | 'userStreak'): BasicValidationResult {
+export function validateLoadedData(
+  data: unknown,
+  expectedType:
+    | 'cards'
+    | 'dailyDeck'
+    | 'templates'
+    | 'dayCompletions'
+    | 'userStreak'
+    | 'deckDate'
+    | 'deckLastEditedDate'
+): BasicValidationResult {
   if (!data) {
     return { valid: true, error: null }; // null/undefined is fine, just means no data saved yet
   }
@@ -318,6 +358,13 @@ export function validateLoadedData(data: unknown, expectedType: 'cards' | 'daily
     case 'userStreak':
       if (typeof data !== 'object' || Array.isArray(data)) {
         return { valid: false, error: 'User streak data must be an object' };
+      }
+      return { valid: true, error: null };
+
+    case 'deckDate':
+    case 'deckLastEditedDate':
+      if (typeof data !== 'string') {
+        return { valid: false, error: `${expectedType} must be a string` };
       }
       return { valid: true, error: null };
 

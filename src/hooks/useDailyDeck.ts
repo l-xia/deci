@@ -9,6 +9,12 @@ function isCategoryKey(value: string): value is CategoryKey {
 
 export function useDailyDeck(initialDeck: Card[] = []) {
   const [dailyDeck, setDailyDeck] = useState<Card[]>(initialDeck);
+  const [deckDate, setDeckDate] = useState<string | null>(
+    new Date().toISOString()
+  );
+  const [deckLastEditedDate, setDeckLastEditedDate] = useState<string | null>(
+    null
+  );
 
   const removeCardById = useCallback((cardId: string) => {
     setDailyDeck((prev) => prev.filter((c) => c.id !== cardId));
@@ -38,6 +44,8 @@ export function useDailyDeck(initialDeck: Card[] = []) {
         .filter(Boolean) as Card[];
 
       setDailyDeck(loadedCards);
+      // Update deck date when loading template
+      setDeckDate(new Date().toISOString());
 
       return loadedCards;
     },
@@ -49,5 +57,9 @@ export function useDailyDeck(initialDeck: Card[] = []) {
     setDailyDeck,
     removeCardById,
     loadFromTemplate,
+    deckDate,
+    setDeckDate,
+    deckLastEditedDate,
+    setDeckLastEditedDate,
   };
 }

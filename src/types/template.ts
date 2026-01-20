@@ -12,4 +12,5 @@ export interface Template {
   createdAt: string;
   updatedAt?: string;
   cardCount: number;
+  archived?: boolean;
 }

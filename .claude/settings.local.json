@@ -8,7 +8,8 @@
       "Bash(find:*)",
       "Bash(npx tsc:*)",
       "Bash(npm test:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git -C /Users/lxia/Applications/card-deck-app log --oneline -20 src/components/Timer.tsx)"
     ],
     "deny": [],
     "ask": []

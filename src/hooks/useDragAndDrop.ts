@@ -14,7 +14,8 @@ export function useDragAndDrop(
   cards: CardsByCategory,
   setCards: (cards: CardsByCategory) => void,
   dailyDeck: Card[],
-  setDailyDeck: (deck: Card[]) => void
+  setDailyDeck: (deck: Card[]) => void,
+  setDeckLastEditedDate?: (date: string) => void
 ) {
   // Handler: Reorder cards within daily deck
   const handleDailyDeckReorder = useCallback(
@@ -28,8 +29,13 @@ export function useDragAndDrop(
 
       newDailyDeck.splice(destination.index, 0, removed);
       setDailyDeck(newDailyDeck);
+
+      // Track deck edit
+      if (setDeckLastEditedDate) {
+        setDeckLastEditedDate(new Date().toISOString());
+      }
     },
-    [dailyDeck, setDailyDeck]
+    [dailyDeck, setDailyDeck, setDeckLastEditedDate]
   );
 
   // Handler: Add card from category to daily deck
@@ -96,6 +102,11 @@ export function useDragAndDrop(
       newDailyDeck.splice(insertIndex, 0, cardWithSource);
       setDailyDeck(newDailyDeck);
 
+      // Track deck edit
+      if (setDeckLastEditedDate) {
+        setDeckLastEditedDate(new Date().toISOString());
+      }
+
       // Scroll to the newly added card
       setTimeout(() => {
         const newCardElement = document.querySelector(
@@ -109,7 +120,7 @@ export function useDragAndDrop(
         }
       }, 100);
     },
-    [cards, dailyDeck, setDailyDeck]
+    [cards, dailyDeck, setDailyDeck, setDeckLastEditedDate]
   );
 
   // Handler: Remove card from daily deck
@@ -118,8 +129,13 @@ export function useDragAndDrop(
       const newDailyDeck = Array.from(dailyDeck);
       newDailyDeck.splice(source.index, 1);
       setDailyDeck(newDailyDeck);
+
+      // Track deck edit
+      if (setDeckLastEditedDate) {
+        setDeckLastEditedDate(new Date().toISOString());
+      }
     },
-    [dailyDeck, setDailyDeck]
+    [dailyDeck, setDailyDeck, setDeckLastEditedDate]
   );
 
   // Handler: Move card between categories

@@ -23,7 +23,14 @@ interface SyncProviderProps {
 export function SyncProvider({ children }: SyncProviderProps) {
   const firebase = useFirebase();
   const { cards, setCards } = useCardsContext();
-  const { dailyDeck, setDailyDeck } = useDailyDeckContext();
+  const {
+    dailyDeck,
+    setDailyDeck,
+    deckDate,
+    setDeckDate,
+    deckLastEditedDate,
+    setDeckLastEditedDate,
+  } = useDailyDeckContext();
   const { templates, setTemplates } = useTemplatesContext();
   const { dayCompletions, userStreak, setDayCompletions, setUserStreak } =
     useDayCompletionContext();
@@ -32,11 +39,15 @@ export function SyncProvider({ children }: SyncProviderProps) {
     firebase,
     cards,
     dailyDeck,
+    deckDate,
+    deckLastEditedDate,
     templates,
     dayCompletions,
     userStreak,
     setCards,
     setDailyDeck,
+    setDeckDate,
+    setDeckLastEditedDate,
     setTemplates,
     setDayCompletions,
     setUserStreak,

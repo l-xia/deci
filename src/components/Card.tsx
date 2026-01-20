@@ -1,12 +1,17 @@
 import { Draggable } from '@hello-pangea/dnd';
 import type { Card as CardType } from '../types';
 import { getCategoryColors } from '../utils/categories';
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  PencilIcon,
+  ArchiveBoxIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 
 interface CardProps {
   card: CardType;
   index: number;
   onEdit: (card: CardType) => void;
+  onArchive: (id: string) => void;
   onDelete: (id: string) => void;
   isDailyDeck?: boolean;
   categoryKey: 'structure' | 'upkeep' | 'play' | 'default';
@@ -17,6 +22,7 @@ function Card({
   card,
   index,
   onEdit,
+  onArchive,
   onDelete,
   isDailyDeck = false,
   categoryKey,
@@ -95,6 +101,17 @@ function Card({
                   aria-label={`Edit ${card.title}`}
                 >
                   <PencilIcon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onArchive(card.id);
+                  }}
+                  className="p-1 text-gray-400 hover:text-amber-600 transition-colors"
+                  title="Archive"
+                  aria-label={`Archive ${card.title}`}
+                >
+                  <ArchiveBoxIcon className="w-4 h-4" />
                 </button>
                 <button
                   onClick={(e) => {

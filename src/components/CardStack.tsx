@@ -11,19 +11,33 @@ interface CardStackProps {
   color: string;
   onAddCard: () => void;
   onEditCard: (card: CardType) => void;
+  onArchiveCard: (id: string) => void;
   onDeleteCard: (id: string) => void;
   dailyDeck?: CardType[];
 }
 
-function CardStack({ droppableId, title, cards, onAddCard, onEditCard, onDeleteCard, dailyDeck }: CardStackProps) {
+function CardStack({
+  droppableId,
+  title,
+  cards,
+  onAddCard,
+  onEditCard,
+  onArchiveCard,
+  onDeleteCard,
+  dailyDeck,
+}: CardStackProps) {
   const colors = getCategoryColors(droppableId);
 
   return (
-    <div className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-[42vh]`}>
+    <div
+      className={`rounded-md border-2 ${colors.border} bg-white p-4 shadow-md flex flex-col h-[42vh]`}
+    >
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900 relative inline-block">
           <span className="relative z-10">{title}</span>
-          <span className={`absolute bottom-0 left-0 right-0 h-2 ${colors.highlight} opacity-50`}></span>
+          <span
+            className={`absolute bottom-0 left-0 right-0 h-2 ${colors.highlight} opacity-50`}
+          ></span>
         </h3>
         <button
           onClick={onAddCard}
@@ -56,6 +70,7 @@ function CardStack({ droppableId, title, cards, onAddCard, onEditCard, onDeleteC
                   card={card}
                   index={index}
                   onEdit={onEditCard}
+                  onArchive={onArchiveCard}
                   onDelete={onDeleteCard}
                   isDailyDeck={false}
                   categoryKey={droppableId}

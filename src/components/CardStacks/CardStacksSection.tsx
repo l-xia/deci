@@ -8,6 +8,7 @@ interface CardStacksSectionProps {
   getAvailableCards: (category: CategoryKey, dailyDeck: Card[]) => Card[];
   onAddCard: (category: CategoryKey) => void;
   onEditCard: (category: CategoryKey, card: Card) => void;
+  onArchiveCard: (category: CategoryKey, cardId: string) => void;
   onDeleteCard: (category: CategoryKey, cardId: string) => void;
 }
 
@@ -20,6 +21,7 @@ export function CardStacksSection({
   getAvailableCards,
   onAddCard,
   onEditCard,
+  onArchiveCard,
   onDeleteCard,
 }: CardStacksSectionProps) {
   // Memoize filtered cards to avoid recalculating on every render
@@ -54,6 +56,7 @@ export function CardStacksSection({
               color={category.color}
               onAddCard={() => onAddCard(key)}
               onEditCard={(card) => onEditCard(key, card)}
+              onArchiveCard={(cardId) => onArchiveCard(key, cardId)}
               onDeleteCard={(cardId) => onDeleteCard(key, cardId)}
               dailyDeck={dailyDeck}
             />

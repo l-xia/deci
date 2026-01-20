@@ -17,7 +17,10 @@ interface DailyDeckProps {
   onSaveTemplate: (name: string) => void;
   onLoadTemplate: (templateId: string) => void;
   onDeleteTemplate: (templateId: string) => void;
+  onArchiveTemplate: (templateId: string) => void;
   onCompleteDay?: () => void;
+  deckDate: string | null;
+  deckLastEditedDate: string | null;
 }
 
 function DailyDeck({
@@ -30,15 +33,20 @@ function DailyDeck({
   onSaveTemplate,
   onLoadTemplate,
   onDeleteTemplate,
+  onArchiveTemplate,
   onCompleteDay,
+  deckDate,
+  deckLastEditedDate,
 }: DailyDeckProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [manuallyExpandedIndex, setManuallyExpandedIndex] = useState<number | null>(null);
+  const [manuallyExpandedIndex, setManuallyExpandedIndex] = useState<
+    number | null
+  >(null);
 
-  const firstIncompleteIndex = useMemo(() =>
-    cards.findIndex(c => !c.completed),
+  const firstIncompleteIndex = useMemo(
+    () => cards.findIndex((c) => !c.completed),
     [cards]
   );
 
@@ -73,9 +81,11 @@ function DailyDeck({
         className={`
           bg-white rounded-t-md border-2 border-gray-200 shadow-lg flex flex-col
           transition-all duration-300 ease-in-out
-          ${drawerOpen
-            ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none overflow-hidden'
-            : 'relative h-[55vh] overflow-hidden'}
+          ${
+            drawerOpen
+              ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none overflow-hidden'
+              : 'relative h-[55vh] overflow-hidden'
+          }
           lg:relative lg:h-[85vh] lg:p-2 lg:overflow-hidden lg:static lg:translate-y-0
         `}
       >
@@ -100,8 +110,11 @@ function DailyDeck({
             onSaveTemplate={onSaveTemplate}
             onLoadTemplate={onLoadTemplate}
             onDeleteTemplate={onDeleteTemplate}
+            onArchiveTemplate={onArchiveTemplate}
             hasDailyDeck={cards.length > 0}
             onCompleteDay={onCompleteDay}
+            deckDate={deckDate}
+            deckLastEditedDate={deckLastEditedDate}
           />
 
           {/* Card list */}
@@ -132,7 +145,9 @@ function DailyDeck({
                         index={index}
                         isFirstIncomplete={isFirstIncomplete}
                         isExpanded={isExpanded}
-                        onToggleExpanded={() => setManuallyExpandedIndex(isExpanded ? null : index)}
+                        onToggleExpanded={() =>
+                          setManuallyExpandedIndex(isExpanded ? null : index)
+                        }
                         onUpdateCard={onUpdateCard}
                         onEditCard={onEditCard}
                         onOneTimeEdit={onOneTimeEditCard}
