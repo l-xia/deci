@@ -11,8 +11,8 @@ export interface ReorderResult {
 }
 
 /**
- * Reorders deck when a card is marked as complete
- * Moves the card to position 0 (completed cards go first)
+ * Updates deck when a card is marked as complete
+ * Keeps the card in its existing position
  */
 export function reorderDeckOnComplete(
   deck: Card[],
@@ -20,12 +20,9 @@ export function reorderDeckOnComplete(
   updatedCard: Card
 ): ReorderResult {
   const newDeck = [...deck];
-  newDeck.splice(cardIndex, 1);
+  newDeck[cardIndex] = updatedCard;
 
-  // Insert at position 0 (completed cards go first)
-  newDeck.splice(0, 0, updatedCard);
-
-  return { newDeck, insertIndex: 0 };
+  return { newDeck, insertIndex: cardIndex };
 }
 
 /**
