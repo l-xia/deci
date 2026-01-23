@@ -1,4 +1,5 @@
 import { sanitizeInput } from './input';
+import { VALID_CATEGORIES } from '../typeGuards';
 
 export interface ValidationResult {
   valid: boolean;
@@ -198,9 +199,7 @@ export function validateRecurrenceType(
 }
 
 export function validateCategory(category: string): BasicValidationResult {
-  const validCategories = ['structure', 'upkeep', 'play', 'default'];
-
-  if (!validCategories.includes(category)) {
+  if (!(VALID_CATEGORIES as readonly string[]).includes(category)) {
     return {
       valid: false,
       error: ERROR_MESSAGES.INVALID_CATEGORY,

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useGlobalTimerContext } from '../../context/AppContext';
 import { useDailyDeckContext } from '../../context/DailyDeckContext';
 import { formatTimerDuration } from '../../utils/formatTimerDuration';
@@ -41,8 +42,11 @@ export function GlobalTimer() {
     }
   };
 
-  // Only show active (non-completed) cards in dropdown
-  const availableCards = dailyDeck.filter((card) => !card.completed);
+  // Only show active (non-completed) cards in dropdown (memoized)
+  const availableCards = useMemo(
+    () => dailyDeck.filter((card) => !card.completed),
+    [dailyDeck]
+  );
 
   return (
     <div className="flex items-center gap-2">

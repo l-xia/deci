@@ -1,5 +1,5 @@
 import { Draggable } from '@hello-pangea/dnd';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Card } from '../../types';
 import { getCategoryColors } from '../../utils/categories';
 import { formatScheduleDescription } from '../../utils/scheduling';
@@ -43,9 +43,11 @@ function DailyDeckCard({
   const borderColor = colors.border;
   const highlightColor = colors.highlight;
 
-  // Calculate total tracked time from time entries
-  const trackedSeconds =
-    card.timeEntries?.reduce((sum, entry) => sum + entry.seconds, 0) || 0;
+  // Calculate total tracked time from time entries (memoized)
+  const trackedSeconds = useMemo(
+    () => card.timeEntries?.reduce((sum, entry) => sum + entry.seconds, 0) || 0,
+    [card.timeEntries]
+  );
 
   const longPressHandlers = useLongPress({
     onLongPress: (e) => {
@@ -57,14 +59,10 @@ function DailyDeckCard({
   });
 
   const handleMarkComplete = () => {
-    // Calculate timeSpent from timeEntries (global timer tracks this)
-    const timeSpent =
-      card.timeEntries?.reduce((sum, entry) => sum + entry.seconds, 0) || 0;
-
     const updates: Partial<Card> = {
       completed: true,
       completedAt: new Date().toISOString(),
-      timeSpent,
+      timeSpent: trackedSeconds,
     };
 
     onUpdateCard(index, updates);

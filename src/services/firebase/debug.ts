@@ -1,22 +1,13 @@
-import { collection, getDocs, query, doc, setDoc, getDoc } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  query,
+  doc,
+  setDoc,
+  getDoc,
+} from 'firebase/firestore';
 import { db, auth } from './config';
-
-interface FirebaseErrorType {
-  code: string;
-  message: string;
-}
-
-// Type guard to check if error is a Firebase error
-function isFirebaseError(error: unknown): error is FirebaseErrorType {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    'message' in error &&
-    typeof (error as FirebaseErrorType).code === 'string' &&
-    typeof (error as FirebaseErrorType).message === 'string'
-  );
-}
+import { isFirebaseError } from './utils';
 
 // Extend Window interface for development
 declare global {

@@ -101,12 +101,12 @@ export function useGlobalTimer({
   // Start timer
   const startTimer = useCallback(
     (cardId?: string, description?: string) => {
-      setTimerState((prev) => {
-        // If already running, we need to pause first - handled via pauseTimer call
-        if (prev.isRunning && prev.currentEntry) {
-          pauseTimer();
-        }
+      // If already running, pause first (outside setTimerState to avoid stale closure)
+      if (timerState.isRunning && timerState.currentEntry) {
+        pauseTimer();
+      }
 
+      setTimerState((prev) => {
         const selectedCard = cardId || prev.selectedCardId;
         const taskDescription = description || prev.currentDescription;
 
@@ -133,7 +133,7 @@ export function useGlobalTimer({
         };
       });
     },
-    [pauseTimer]
+    [timerState.isRunning, timerState.currentEntry, pauseTimer]
   );
 
   // Stop timer (same as pause, but clears selection)

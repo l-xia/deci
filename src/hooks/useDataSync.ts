@@ -101,7 +101,9 @@ export function useDataSync({
   useEffect(() => {
     if (firebase.initialized && !hasLoadedOnce) {
       const loadInitialData = async () => {
-        console.log('🔄 Loading data from Firebase...');
+        if (import.meta.env.DEV) {
+          console.log('🔄 Loading data from Firebase...');
+        }
         const {
           cards: loadedCards,
           dailyDeck: loadedDailyDeck,
@@ -113,17 +115,19 @@ export function useDataSync({
           hasData,
         } = await firebase.loadData();
 
-        console.log('📦 Loaded data:', {
-          cardsCount: loadedCards
-            ? Object.values(loadedCards).flat().length
-            : 0,
-          dailyDeckCount: loadedDailyDeck?.length || 0,
-          deckDate: loadedDeckDate,
-          templatesCount: loadedTemplates?.length || 0,
-          dayCompletionsCount: loadedDayCompletions?.length || 0,
-          currentStreak: loadedUserStreak?.currentStreak || 0,
-          hasData,
-        });
+        if (import.meta.env.DEV) {
+          console.log('📦 Loaded data:', {
+            cardsCount: loadedCards
+              ? Object.values(loadedCards).flat().length
+              : 0,
+            dailyDeckCount: loadedDailyDeck?.length || 0,
+            deckDate: loadedDeckDate,
+            templatesCount: loadedTemplates?.length || 0,
+            dayCompletionsCount: loadedDayCompletions?.length || 0,
+            currentStreak: loadedUserStreak?.currentStreak || 0,
+            hasData,
+          });
+        }
 
         if (loadedCards) {
           setCards(loadedCards);
@@ -184,9 +188,11 @@ export function useDataSync({
 
     // Check and save cards
     if (hasShallowChanged(lastSavedCardsRef.current, cards)) {
-      console.log('📝 Cards changed, triggering debounced save...', {
-        cardsCount: Object.values(cards).flat().length,
-      });
+      if (import.meta.env.DEV) {
+        console.log('📝 Cards changed, triggering debounced save...', {
+          cardsCount: Object.values(cards).flat().length,
+        });
+      }
       lastSavedCardsRef.current = cards;
       firebase.debouncedSaveCards(cards);
     }
