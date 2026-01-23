@@ -58,10 +58,12 @@ class FirebaseStorageManager {
       const docRef = doc(db, 'users', userId, 'data', key);
       const dataToSave = createDataToSave(data);
 
-      console.log(`💾 Saving ${key} to Firebase...`, {
-        path: `users/${userId}/data/${key}`,
-        dataSize: data !== undefined ? JSON.stringify(data).length : 0,
-      });
+      if (import.meta.env.DEV) {
+        console.log(`💾 Saving ${key} to Firebase...`, {
+          path: `users/${userId}/data/${key}`,
+          dataSize: data !== undefined ? JSON.stringify(data).length : 0,
+        });
+      }
 
       await retryWithBackoff(
         async () => await setDoc(docRef, dataToSave),
@@ -69,10 +71,14 @@ class FirebaseStorageManager {
         this.RETRY_BASE_DELAY
       );
 
-      console.log(`✅ Successfully saved ${key} to Firebase`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ Successfully saved ${key} to Firebase`);
+      }
       return { success: true, error: null };
     } catch (error) {
-      console.error(`❌ Error saving ${key} to Firebase:`, error);
+      if (import.meta.env.DEV) {
+        console.error(`❌ Error saving ${key} to Firebase:`, error);
+      }
       const storageError = new FirebaseStorageError(
         `Failed to save ${key} after ${this.RETRY_ATTEMPTS} attempts`,
         'SAVE_ERROR',

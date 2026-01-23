@@ -1,14 +1,31 @@
-import type { CategoryKey, Card, CardsByCategory, Template, DayCompletion, UserStreak } from '../types';
+import type {
+  CategoryKey,
+  Card,
+  CardsByCategory,
+  Template,
+  DayCompletion,
+  UserStreak,
+} from '../types';
 
-const VALID_CATEGORIES: readonly CategoryKey[] = ['structure', 'upkeep', 'play', 'default'] as const;
+export const VALID_CATEGORIES: readonly CategoryKey[] = [
+  'structure',
+  'upkeep',
+  'play',
+  'default',
+] as const;
 
 export function isCategoryKey(value: unknown): value is CategoryKey {
-  return typeof value === 'string' && (VALID_CATEGORIES as readonly string[]).includes(value);
+  return (
+    typeof value === 'string' &&
+    (VALID_CATEGORIES as readonly string[]).includes(value)
+  );
 }
 
 export function assertCategoryKey(value: unknown): CategoryKey {
   if (!isCategoryKey(value)) {
-    throw new Error(`Invalid category: ${value}. Must be one of: ${VALID_CATEGORIES.join(', ')}`);
+    throw new Error(
+      `Invalid category: ${value}. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+    );
   }
   return value;
 }
@@ -23,7 +40,10 @@ export function isCard(value: unknown): value is Card {
     typeof card.createdAt === 'string' &&
     (card.description === undefined || typeof card.description === 'string') &&
     (card.duration === undefined || typeof card.duration === 'number') &&
-    (card.recurrenceType === undefined || ['always', 'limited', 'once', 'scheduled'].includes(card.recurrenceType as string)) &&
+    (card.recurrenceType === undefined ||
+      ['always', 'limited', 'once', 'scheduled'].includes(
+        card.recurrenceType as string
+      )) &&
     (card.completed === undefined || typeof card.completed === 'boolean') &&
     (card.timeSpent === undefined || typeof card.timeSpent === 'number') &&
     (card.completedAt === undefined || typeof card.completedAt === 'string')
@@ -39,10 +59,18 @@ export function isCardsByCategory(value: unknown): value is CardsByCategory {
   const obj = value as Record<string, unknown>;
 
   return (
-    'structure' in obj && Array.isArray(obj.structure) && obj.structure.every(isCard) &&
-    'upkeep' in obj && Array.isArray(obj.upkeep) && obj.upkeep.every(isCard) &&
-    'play' in obj && Array.isArray(obj.play) && obj.play.every(isCard) &&
-    'default' in obj && Array.isArray(obj.default) && obj.default.every(isCard)
+    'structure' in obj &&
+    Array.isArray(obj.structure) &&
+    obj.structure.every(isCard) &&
+    'upkeep' in obj &&
+    Array.isArray(obj.upkeep) &&
+    obj.upkeep.every(isCard) &&
+    'play' in obj &&
+    Array.isArray(obj.play) &&
+    obj.play.every(isCard) &&
+    'default' in obj &&
+    Array.isArray(obj.default) &&
+    obj.default.every(isCard)
   );
 }
 

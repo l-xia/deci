@@ -54,7 +54,7 @@ export function useDragAndDrop(
         return;
       }
 
-      const sourceCategory = source.droppableId as CategoryKey;
+      const sourceCategory = source.droppableId;
       const card = cards[sourceCategory]?.find((c) => c.id === actualCardId);
 
       if (!card) return;
@@ -107,7 +107,7 @@ export function useDragAndDrop(
         setDeckLastEditedDate(new Date().toISOString());
       }
 
-      // Scroll to the newly added card
+      // Scroll to the newly added card (200ms delay for DOM update)
       setTimeout(() => {
         const newCardElement = document.querySelector(
           `[data-rbd-draggable-id="${card.id}-${insertIndex}"]`
@@ -118,7 +118,7 @@ export function useDragAndDrop(
             block: 'center',
           });
         }
-      }, 100);
+      }, 200);
     },
     [cards, dailyDeck, setDailyDeck, setDeckLastEditedDate]
   );

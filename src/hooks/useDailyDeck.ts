@@ -1,11 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Card, CardsByCategory } from '../types';
-import type { CategoryKey } from '../types/category';
-
-// Type guard to check if a string is a valid CategoryKey
-function isCategoryKey(value: string): value is CategoryKey {
-  return ['structure', 'upkeep', 'play', 'default'].includes(value);
-}
+import { isCategoryKey } from '../utils/typeGuards';
 
 export function useDailyDeck(initialDeck: Card[] = []) {
   const [dailyDeck, setDailyDeck] = useState<Card[]>(initialDeck);

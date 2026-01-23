@@ -13,9 +13,9 @@ export function ScheduleSelector({
   onChange,
   onScheduleTypeChange,
 }: ScheduleSelectorProps) {
-  const toggleDay = (day: number) => {
+  const handleToggleDay = (day: number) => {
     if (selectedDays.includes(day)) {
-      onChange(selectedDays.filter(d => d !== day));
+      onChange(selectedDays.filter((d) => d !== day));
     } else {
       onChange([...selectedDays, day].sort((a, b) => a - b));
     }
@@ -72,11 +72,11 @@ export function ScheduleSelector({
             Select Days
           </label>
           <div className="grid grid-cols-7 gap-2">
-            {DAYS_OF_WEEK.map(day => (
+            {DAYS_OF_WEEK.map((day) => (
               <button
                 key={day.value}
                 type="button"
-                onClick={() => toggleDay(day.value)}
+                onClick={() => handleToggleDay(day.value)}
                 className={`px-2 py-2 text-sm rounded-md transition-colors ${
                   selectedDays.includes(day.value)
                     ? 'bg-blue-500 text-white'
@@ -98,11 +98,11 @@ export function ScheduleSelector({
             Select Dates
           </label>
           <div className="grid grid-cols-7 gap-2 max-h-48 overflow-y-auto">
-            {Array.from({ length: 31 }, (_, i) => i + 1).map(date => (
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((date) => (
               <button
                 key={date}
                 type="button"
-                onClick={() => toggleDay(date)}
+                onClick={() => handleToggleDay(date)}
                 className={`px-2 py-2 text-sm rounded-md transition-colors ${
                   selectedDays.includes(date)
                     ? 'bg-blue-500 text-white'

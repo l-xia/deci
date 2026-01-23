@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import type { Card as CardType } from '../types';
 import { getCategoryColors } from '../utils/categories';
@@ -30,10 +31,11 @@ function Card({
 }: CardProps) {
   const colors = getCategoryColors(categoryKey);
 
-  // Calculate how many times this card is in the daily deck
-  const timesInDailyDeck = dailyDeck.filter(
-    (deckCard) => deckCard.id === card.id
-  ).length;
+  // Calculate how many times this card is in the daily deck (memoized)
+  const timesInDailyDeck = useMemo(
+    () => dailyDeck.filter((deckCard) => deckCard.id === card.id).length,
+    [dailyDeck, card.id]
+  );
 
   // Calculate remaining uses for limited recurrence cards
   const remainingUses =

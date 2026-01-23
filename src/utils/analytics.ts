@@ -33,16 +33,19 @@ export function aggregateDailyTrends(
 ): DailyTrendData[] {
   if (completions.length === 0) return [];
 
-  return completions.map((completion) => {
-    const { totalCards, completedCards, totalTimeSpent } = completion.summary;
-    return {
-      date: completion.id, // Already in YYYY-MM-DD format
-      completed: completedCards,
-      total: totalCards,
-      completionRate: totalCards > 0 ? (completedCards / totalCards) * 100 : 0,
-      timeSpent: totalTimeSpent,
-    };
-  }).sort((a, b) => a.date.localeCompare(b.date));
+  return completions
+    .map((completion) => {
+      const { totalCards, completedCards, totalTimeSpent } = completion.summary;
+      return {
+        date: completion.id, // Already in YYYY-MM-DD format
+        completed: completedCards,
+        total: totalCards,
+        completionRate:
+          totalCards > 0 ? (completedCards / totalCards) * 100 : 0,
+        timeSpent: totalTimeSpent,
+      };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
@@ -133,9 +136,10 @@ export function calculateCompletionRate(
       trendDirection: 'neutral',
       sparklineData: completions.map((c) => ({
         date: c.id,
-        rate: c.summary.totalCards > 0
-          ? (c.summary.completedCards / c.summary.totalCards) * 100
-          : 0,
+        rate:
+          c.summary.totalCards > 0
+            ? (c.summary.completedCards / c.summary.totalCards) * 100
+            : 0,
       })),
     };
   }
@@ -144,11 +148,11 @@ export function calculateCompletionRate(
   const secondHalf = rates.slice(midpoint);
 
   const firstAvg = firstHalf.reduce((sum, r) => sum + r, 0) / firstHalf.length;
-  const secondAvg = secondHalf.reduce((sum, r) => sum + r, 0) / secondHalf.length;
+  const secondAvg =
+    secondHalf.reduce((sum, r) => sum + r, 0) / secondHalf.length;
 
   const trend = secondAvg - firstAvg;
-  const trendDirection =
-    trend > 0.5 ? 'up' : trend < -0.5 ? 'down' : 'neutral';
+  const trendDirection = trend > 0.5 ? 'up' : trend < -0.5 ? 'down' : 'neutral';
 
   return {
     averageRate,
@@ -156,9 +160,10 @@ export function calculateCompletionRate(
     trendDirection,
     sparklineData: completions.map((c) => ({
       date: c.id,
-      rate: c.summary.totalCards > 0
-        ? (c.summary.completedCards / c.summary.totalCards) * 100
-        : 0,
+      rate:
+        c.summary.totalCards > 0
+          ? (c.summary.completedCards / c.summary.totalCards) * 100
+          : 0,
     })),
   };
 }
@@ -235,7 +240,9 @@ export function calculateConsistencyScore(
     totalDays = 30;
   } else {
     // For 'all', calculate from first to last completion
-    const dates = completions.map((c) => parseISO(c.id)).sort((a, b) => a.getTime() - b.getTime());
+    const dates = completions
+      .map((c) => parseISO(c.id))
+      .sort((a, b) => a.getTime() - b.getTime());
     if (dates.length < 2) return 100;
     const firstDate = dates[0];
     const lastDate = dates[dates.length - 1];
@@ -248,20 +255,19 @@ export function calculateConsistencyScore(
 }
 
 /**
- * Get top N most completed cards
+ * Shared helper to aggregate card data from completions
  */
-export function getTopCompletedCards(
-  completions: DayCompletion[],
-  limit: number = 10
-): CardRankingData[] {
-  const cardMap = new Map<string, {
-    title: string;
-    category: string;
-    count: number;
-    totalTime: number;
-  }>();
+function aggregateCards(completions: DayCompletion[]): CardRankingData[] {
+  const cardMap = new Map<
+    string,
+    {
+      title: string;
+      category: string;
+      count: number;
+      totalTime: number;
+    }
+  >();
 
-  // Aggregate card data
   completions.forEach((completion) => {
     completion.summary.cardsList.forEach((card) => {
       const existing = cardMap.get(card.id);
@@ -279,16 +285,24 @@ export function getTopCompletedCards(
     });
   });
 
-  // Convert to array and sort
-  return Array.from(cardMap.entries())
-    .map(([id, data]) => ({
-      id,
-      title: data.title,
-      category: data.category as CategoryKey,
-      count: data.count,
-      totalTime: data.totalTime,
-      avgTime: data.count > 0 ? data.totalTime / data.count : 0,
-    }))
+  return Array.from(cardMap.entries()).map(([id, data]) => ({
+    id,
+    title: data.title,
+    category: data.category as CategoryKey,
+    count: data.count,
+    totalTime: data.totalTime,
+    avgTime: data.count > 0 ? data.totalTime / data.count : 0,
+  }));
+}
+
+/**
+ * Get top N most completed cards
+ */
+export function getTopCompletedCards(
+  completions: DayCompletion[],
+  limit: number = 10
+): CardRankingData[] {
+  return aggregateCards(completions)
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
 }
@@ -300,41 +314,7 @@ export function getTopTimeConsumingCards(
   completions: DayCompletion[],
   limit: number = 10
 ): CardRankingData[] {
-  const cardMap = new Map<string, {
-    title: string;
-    category: string;
-    count: number;
-    totalTime: number;
-  }>();
-
-  // Aggregate card data
-  completions.forEach((completion) => {
-    completion.summary.cardsList.forEach((card) => {
-      const existing = cardMap.get(card.id);
-      if (existing) {
-        existing.count += 1;
-        existing.totalTime += card.timeSpent || 0;
-      } else {
-        cardMap.set(card.id, {
-          title: card.title,
-          category: card.category,
-          count: 1,
-          totalTime: card.timeSpent || 0,
-        });
-      }
-    });
-  });
-
-  // Convert to array and sort by total time
-  return Array.from(cardMap.entries())
-    .map(([id, data]) => ({
-      id,
-      title: data.title,
-      category: data.category as CategoryKey,
-      count: data.count,
-      totalTime: data.totalTime,
-      avgTime: data.count > 0 ? data.totalTime / data.count : 0,
-    }))
+  return aggregateCards(completions)
     .sort((a, b) => b.totalTime - a.totalTime)
     .slice(0, limit);
 }
@@ -361,7 +341,10 @@ export function aggregateByRecurrenceType(
     });
   });
 
-  const totalCount = Array.from(typeMap.values()).reduce((sum, count) => sum + count, 0);
+  const totalCount = Array.from(typeMap.values()).reduce(
+    (sum, count) => sum + count,
+    0
+  );
 
   return Array.from(typeMap.entries()).map(([type, count]) => ({
     type: type as RecurrenceType | 'always',
@@ -438,7 +421,10 @@ export function aggregateByTimePeriod(
     });
   });
 
-  const totalCount = Object.values(periods).reduce((sum, p) => sum + p.count, 0);
+  const totalCount = Object.values(periods).reduce(
+    (sum, p) => sum + p.count,
+    0
+  );
 
   return Object.entries(periods).map(([period, data]) => ({
     period: period as TimePeriodData['period'],
