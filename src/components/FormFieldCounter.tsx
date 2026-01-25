@@ -1,5 +1,5 @@
 interface FormFieldCounterProps {
-  error?: string;
+  error?: string | undefined;
   currentLength: number;
   maxLength: number;
 }

@@ -18,6 +18,7 @@ interface DailyDeckProps {
   onLoadTemplate: (templateId: string) => void;
   onDeleteTemplate: (templateId: string) => void;
   onArchiveTemplate: (templateId: string) => void;
+  onResetToToday: () => void;
   onCompleteDay?: () => void;
   deckDate: string | null;
   deckLastEditedDate: string | null;
@@ -34,6 +35,7 @@ function DailyDeck({
   onLoadTemplate,
   onDeleteTemplate,
   onArchiveTemplate,
+  onResetToToday,
   onCompleteDay,
   deckDate,
   deckLastEditedDate,
@@ -111,6 +113,7 @@ function DailyDeck({
             onLoadTemplate={onLoadTemplate}
             onDeleteTemplate={onDeleteTemplate}
             onArchiveTemplate={onArchiveTemplate}
+            onResetToToday={onResetToToday}
             hasDailyDeck={cards.length > 0}
             onCompleteDay={onCompleteDay}
             deckDate={deckDate}

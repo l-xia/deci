@@ -1,28 +1,11 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 import { useTemplates } from '../hooks/useTemplates';
-import type { Template } from '../types';
 
-type TemplatesContextValue = ReturnType<typeof useTemplates>;
+export type TemplatesContextValue = ReturnType<typeof useTemplates>;
 
-const TemplatesContext = createContext<TemplatesContextValue | null>(null);
-
-interface TemplatesProviderProps {
-  children: ReactNode;
-  initialTemplates?: Template[];
-}
-
-export function TemplatesProvider({
-  children,
-  initialTemplates = [],
-}: TemplatesProviderProps) {
-  const templatesState = useTemplates(initialTemplates);
-
-  return (
-    <TemplatesContext.Provider value={templatesState}>
-      {children}
-    </TemplatesContext.Provider>
-  );
-}
+export const TemplatesContext = createContext<TemplatesContextValue | null>(
+  null
+);
 
 export function useTemplatesContext() {
   const context = useContext(TemplatesContext);

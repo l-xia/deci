@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context';
 import LoadingSpinner from './LoadingSpinner';
 import { FormField } from './FormField';
 import deciLogo from '../assets/deci_logo.svg';
@@ -12,14 +12,16 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-const signupSchema = z.object({
-  email: z.email('Please enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string().min(1, 'Please confirm your password'),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+const signupSchema = z
+  .object({
+    email: z.email('Please enter a valid email'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
@@ -87,13 +89,18 @@ const AuthForm = () => {
             {isLogin ? 'Welcome back' : 'Create your account'}
           </h1>
           <p className="text-gray-600 mt-2">
-            {isLogin ? 'Sign in to continue to your daily deck' : 'Get started with your personalized daily deck'}
+            {isLogin
+              ? 'Sign in to continue to your daily deck'
+              : 'Get started with your personalized daily deck'}
           </p>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-8">
           {isLogin ? (
-            <form onSubmit={loginHandleSubmit(onLoginSubmit)} className="space-y-4">
+            <form
+              onSubmit={loginHandleSubmit(onLoginSubmit)}
+              className="space-y-4"
+            >
               <FormField
                 id="email"
                 label="Email"
@@ -127,7 +134,10 @@ const AuthForm = () => {
               >
                 {loading ? (
                   <>
-                    <LoadingSpinner size="sm" className="-ml-1 mr-2 text-white" />
+                    <LoadingSpinner
+                      size="sm"
+                      className="-ml-1 mr-2 text-white"
+                    />
                     Signing in...
                   </>
                 ) : (
@@ -136,7 +146,10 @@ const AuthForm = () => {
               </button>
             </form>
           ) : (
-            <form onSubmit={signupHandleSubmit(onSignupSubmit)} className="space-y-4">
+            <form
+              onSubmit={signupHandleSubmit(onSignupSubmit)}
+              className="space-y-4"
+            >
               <FormField
                 id="email"
                 label="Email"
@@ -180,7 +193,10 @@ const AuthForm = () => {
               >
                 {loading ? (
                   <>
-                    <LoadingSpinner size="sm" className="-ml-1 mr-2 text-white" />
+                    <LoadingSpinner
+                      size="sm"
+                      className="-ml-1 mr-2 text-white"
+                    />
                     Creating account...
                   </>
                 ) : (
@@ -197,7 +213,9 @@ const AuthForm = () => {
               className="text-sm text-blue-500 hover:text-blue-600 font-medium"
               disabled={loading}
             >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              {isLogin
+                ? "Don't have an account? Sign up"
+                : 'Already have an account? Sign in'}
             </button>
           </div>
         </div>

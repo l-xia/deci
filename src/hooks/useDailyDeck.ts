@@ -39,8 +39,6 @@ export function useDailyDeck(initialDeck: Card[] = []) {
         .filter(Boolean) as Card[];
 
       setDailyDeck(loadedCards);
-      // Update deck date when loading template
-      setDeckDate(new Date().toISOString());
 
       return loadedCards;
     },

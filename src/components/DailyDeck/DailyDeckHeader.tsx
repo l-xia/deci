@@ -19,6 +19,7 @@ interface DailyDeckHeaderProps {
   onLoadTemplate: (templateId: string) => void;
   onDeleteTemplate: (templateId: string) => void;
   onArchiveTemplate: (templateId: string) => void;
+  onResetToToday: () => void;
   hasDailyDeck: boolean;
   onCompleteDay?: (() => void) | undefined;
   deckDate: string | null;
@@ -34,6 +35,7 @@ function DailyDeckHeader({
   onLoadTemplate,
   onDeleteTemplate,
   onArchiveTemplate,
+  onResetToToday,
   hasDailyDeck,
   onCompleteDay,
   deckDate,
@@ -122,6 +124,10 @@ function DailyDeckHeader({
                   }}
                   onDelete={onDeleteTemplate}
                   onArchive={onArchiveTemplate}
+                  onResetToToday={() => {
+                    onResetToToday();
+                    onMenuClose();
+                  }}
                   hasDailyDeck={hasDailyDeck}
                 />
               </div>

@@ -7,8 +7,7 @@ import {
 import App from './App';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ArchivePage from './pages/ArchivePage';
-import { AppProvider } from './context/AppContext';
-import { AuthProvider } from './context/AuthContext';
+import { AppProvider, AuthProvider } from './context';
 
 const rootRoute = createRootRoute({
   component: () => (
