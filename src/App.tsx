@@ -371,7 +371,7 @@ function AuthenticatedApp() {
           />
 
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
-            <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
+            <div className="lg:col-span-8 flex flex-col min-h-0 max-h-[40vh] lg:max-h-none overflow-hidden">
               <CardStacksSection
                 dailyDeck={dailyDeck.dailyDeck}
                 getAvailableCards={cards.getAvailableCards}
