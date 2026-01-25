@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import DOMPurify from 'isomorphic-dompurify';
 import type { Card } from '../types';
@@ -32,7 +32,7 @@ function CardModal({
     register,
     handleSubmit,
     formState: { errors },
-    watch,
+    control,
     reset,
     setValue,
   } = useForm<CardFormData>({
@@ -49,9 +49,9 @@ function CardModal({
     },
   });
 
-  const recurrenceType = watch('recurrenceType');
-  const title = watch('title');
-  const description = watch('description');
+  const recurrenceType = useWatch({ control, name: 'recurrenceType' });
+  const title = useWatch({ control, name: 'title' });
+  const description = useWatch({ control, name: 'description' });
 
   useEffect(() => {
     if (card) {

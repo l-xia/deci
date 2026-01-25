@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Template } from '../types';
@@ -17,6 +17,7 @@ interface TemplateManagerProps {
   onLoad: (templateId: string) => void;
   onDelete: (templateId: string) => void;
   onArchive: (templateId: string) => void;
+  onResetToToday: () => void;
   hasDailyDeck: boolean;
 }
 
@@ -38,6 +39,7 @@ function TemplateManager({
   onLoad,
   onDelete,
   onArchive,
+  onResetToToday,
   hasDailyDeck,
 }: TemplateManagerProps) {
   const [isSaving, setIsSaving] = useState(false);
@@ -46,7 +48,7 @@ function TemplateManager({
     register,
     handleSubmit,
     formState: { errors },
-    watch,
+    control,
     reset,
   } = useForm<TemplateFormData>({
     resolver: zodResolver(templateSchema),
@@ -56,7 +58,7 @@ function TemplateManager({
     },
   });
 
-  const templateName = watch('name');
+  const templateName = useWatch({ control, name: 'name' });
 
   const onSubmit = (data: TemplateFormData) => {
     onSave(data.name.trim());
@@ -75,6 +77,19 @@ function TemplateManager({
 
   return (
     <div className="p-2">
+      <div className="text-xs font-medium text-gray-500 uppercase px-2 py-1 mb-1">
+        Controls
+      </div>
+      {/* Reset to Today */}
+      <button
+        onClick={onResetToToday}
+        className="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-700 hover:bg-gray-50 rounded-md transition-colors"
+      >
+        Reset to Today
+      </button>
+
+      <div className="border-t border-gray-200 my-2"></div>
+
       {/* Saved Templates List */}
       {templates.filter((t) => !t.archived).length > 0 && (
         <>

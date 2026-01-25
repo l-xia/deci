@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-import { CardsProvider } from './CardsContext';
-import { DailyDeckProvider } from './DailyDeckContext';
-import { GlobalTimerProvider } from './GlobalTimerContext';
-import { TemplatesProvider } from './TemplatesContext';
-import { DayCompletionProvider } from './DayCompletionContext';
-import { SyncProvider } from './SyncContext';
+import { CardsProvider } from './CardsProvider';
+import { DailyDeckProvider } from './DailyDeckProvider';
+import { GlobalTimerProvider } from './GlobalTimerProvider';
+import { TemplatesProvider } from './TemplatesProvider';
+import { DayCompletionProvider } from './DayCompletionProvider';
+import { SyncProvider } from './SyncProvider';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -36,11 +36,3 @@ export function AppProvider({ children }: AppProviderProps) {
     </CardsProvider>
   );
 }
-
-// Re-export all context hooks for convenience
-export { useCardsContext } from './CardsContext';
-export { useDailyDeckContext } from './DailyDeckContext';
-export { useGlobalTimerContext } from './GlobalTimerContext';
-export { useTemplatesContext } from './TemplatesContext';
-export { useDayCompletionContext } from './DayCompletionContext';
-export { useSyncContext } from './SyncContext';

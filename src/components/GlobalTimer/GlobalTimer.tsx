@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { useGlobalTimerContext } from '../../context/AppContext';
-import { useDailyDeckContext } from '../../context/DailyDeckContext';
+import { useGlobalTimerContext, useDailyDeckContext } from '../../context';
 import { formatTimerDuration } from '../../utils/formatTimerDuration';
 import { PlayIcon, PauseIcon, StopIcon } from '@heroicons/react/24/solid';
 

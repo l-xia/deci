@@ -15,7 +15,7 @@ import {
   useDayCompletionContext,
   useSyncContext,
 } from './context';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './context';
 import {
   isCategoryKey,
   isCardsByCategory,
@@ -173,6 +173,10 @@ function AuthenticatedApp() {
     // Flush pending saves immediately to ensure day completion is saved
     firebase.flushPendingSaves();
   }, [dayCompletion, dailyDeck, firebase]);
+
+  const handleResetToToday = useCallback(() => {
+    dailyDeck.setDeckDate(new Date().toISOString());
+  }, [dailyDeck]);
 
   const scrollToNextIncompleteCard = useCallback(() => {
     setTimeout(() => {
@@ -367,7 +371,7 @@ function AuthenticatedApp() {
           />
 
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
-            <div className="lg:col-span-8 flex flex-col min-h-0 flex-shrink-0">
+            <div className="lg:col-span-8 flex flex-col min-h-0 max-h-[40vh] lg:max-h-none overflow-hidden">
               <CardStacksSection
                 dailyDeck={dailyDeck.dailyDeck}
                 getAvailableCards={cards.getAvailableCards}
@@ -386,6 +390,7 @@ function AuthenticatedApp() {
                 onLoadTemplate={handleLoadTemplate}
                 onDeleteTemplate={handleDeleteTemplate}
                 onArchiveTemplate={handleArchiveTemplate}
+                onResetToToday={handleResetToToday}
                 onUpdateCard={handleUpdateCard}
                 onEditCard={handleEditDailyDeckCard}
                 onOneTimeEditCard={handleOneTimeEditDailyDeckCard}
@@ -430,7 +435,6 @@ function AuthenticatedApp() {
             onSelectTemplate={(templateId) => {
               handleLoadTemplate(templateId);
               setShowTemplatePickerModal(false);
-              // Deck date will be set to today when template is loaded in loadFromTemplate
             }}
             onSkip={() => {
               dailyDeck.setDailyDeck([]);
