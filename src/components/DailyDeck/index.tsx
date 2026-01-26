@@ -73,7 +73,7 @@ function DailyDeck({
       {/* Mobile drawer overlay */}
       {drawerOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
           onClick={() => setDrawerOpen(false)}
         />
       )}
@@ -88,12 +88,12 @@ function DailyDeck({
               ? 'fixed bottom-0 left-0 right-0 z-50 h-[85vh] rounded-b-none overflow-hidden'
               : 'relative h-[55vh] overflow-hidden'
           }
-          lg:relative lg:h-[85vh] lg:p-2 lg:overflow-hidden lg:static lg:translate-y-0
+          md:relative md:h-[85vh] md:p-2 md:overflow-hidden md:static md:translate-y-0
         `}
       >
         {/* Mobile drawer toggle */}
         <button
-          className="lg:hidden flex justify-center overflow-auto max-h-[10vh] items-center pt-2 pb-1 cursor-pointer flex-shrink-0 hover:bg-gray-50 transition-colors"
+          className="md:hidden flex justify-center overflow-auto max-h-[10vh] items-center pt-2 pb-1 cursor-pointer flex-shrink-0 hover:bg-gray-50 transition-colors"
           onClick={() => setDrawerOpen(!drawerOpen)}
           aria-label={drawerOpen ? 'Close drawer' : 'Open drawer'}
         >
@@ -103,7 +103,7 @@ function DailyDeck({
         </button>
 
         {/* Content */}
-        <div className="p-4 flex flex-col flex-1 min-h-0 lg:flex">
+        <div className="p-4 flex flex-col flex-1 min-h-0 md:flex">
           <DailyDeckHeader
             menuOpen={menuOpen}
             onMenuToggle={() => setMenuOpen(!menuOpen)}

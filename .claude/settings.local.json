@@ -9,7 +9,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm test:*)",
       "Bash(npm run build:*)",
-      "Bash(git -C /Users/lxia/Applications/card-deck-app log --oneline -20 src/components/Timer.tsx)"
+      "Bash(git -C /Users/lxia/Applications/card-deck-app log --oneline -20 src/components/Timer.tsx)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

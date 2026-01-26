@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { addDays } from 'date-fns';
+import { addDays, parseISO } from 'date-fns';
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import { DayCompletionModal } from './components/DayCompletionModal';
@@ -164,8 +164,11 @@ function AuthenticatedApp() {
     });
     setShowDayCompletionModal(true);
 
-    // Set deck date to tomorrow after completing day
-    dailyDeck.setDeckDate(addDays(new Date(), 1).toISOString());
+    // Advance deck date by one day (yesterday's deck → today, today's deck → tomorrow)
+    const currentDeckDate = dailyDeck.deckDate
+      ? parseISO(dailyDeck.deckDate)
+      : new Date();
+    dailyDeck.setDeckDate(addDays(currentDeckDate, 1).toISOString());
 
     // Clear last edited date since we're moving to a new day
     dailyDeck.setDeckLastEditedDate(null);
@@ -370,8 +373,8 @@ function AuthenticatedApp() {
             }
           />
 
-          <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 overflow-hidden min-h-0">
-            <div className="lg:col-span-8 flex flex-col min-h-0 max-h-[40vh] lg:max-h-none overflow-hidden">
+          <div className="flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-6 flex-1 overflow-hidden min-h-0">
+            <div className="md:col-span-8 flex flex-col min-h-0 max-h-[40vh] md:max-h-none overflow-hidden md:overflow-y-auto">
               <CardStacksSection
                 dailyDeck={dailyDeck.dailyDeck}
                 getAvailableCards={cards.getAvailableCards}
@@ -382,7 +385,7 @@ function AuthenticatedApp() {
               />
             </div>
 
-            <div className="lg:col-span-4 flex flex-col min-h-0 flex-1">
+            <div className="md:col-span-4 flex flex-col min-h-0 flex-1">
               <DailyDeck
                 cards={dailyDeck.dailyDeck}
                 templates={templates.templates}
