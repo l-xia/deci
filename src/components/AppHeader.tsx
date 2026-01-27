@@ -161,7 +161,7 @@ export const AppHeader = ({
         </div>
       </div>
       <div className="md:hidden">
-        <GlobalTimer />
+        <GlobalTimer fullWidth />
       </div>
     </header>
   );

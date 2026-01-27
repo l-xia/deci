@@ -3,7 +3,11 @@ import { useGlobalTimerContext, useDailyDeckContext } from '../../context';
 import { formatTimerDuration } from '../../utils/formatTimerDuration';
 import { PlayIcon, PauseIcon, StopIcon } from '@heroicons/react/24/solid';
 
-export function GlobalTimer() {
+interface GlobalTimerProps {
+  fullWidth?: boolean;
+}
+
+export function GlobalTimer({ fullWidth = false }: GlobalTimerProps) {
   const {
     startTimer,
     pauseTimer,
@@ -52,14 +56,18 @@ export function GlobalTimer() {
   );
 
   return (
-    <div className="flex items-center gap-1 md:gap-2">
-      {/* Task Description Input - hidden on mobile */}
+    <div
+      className={`flex items-center ${fullWidth ? 'gap-2 w-full' : 'gap-1 md:gap-2'}`}
+    >
+      {/* Task Description Input - hidden on compact, shown on fullWidth */}
       <input
         type="text"
         value={currentDescription}
         onChange={handleDescriptionChange}
         placeholder="What are you working on?"
-        className="hidden md:block text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 w-48"
+        className={`text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+          fullWidth ? 'flex-1 min-w-0' : 'hidden md:block text-xs w-48'
+        }`}
         disabled={isRunning}
       />
 
@@ -67,7 +75,9 @@ export function GlobalTimer() {
       <select
         value={selectedCardIndex !== null ? String(selectedCardIndex) : ''}
         onChange={(e) => handleCardSelect(e.target.value)}
-        className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 w-24 md:w-40"
+        className={`px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+          fullWidth ? 'text-sm w-32' : 'text-xs w-24 md:w-40'
+        }`}
         disabled={isRunning || !hasAvailableCards}
       >
         <option value="">Select a card...</option>
@@ -81,7 +91,11 @@ export function GlobalTimer() {
       </select>
 
       {/* Timer Display */}
-      <div className="text-xs md:text-sm font-mono font-semibold text-gray-700 min-w-[60px] text-center">
+      <div
+        className={`font-mono font-semibold text-gray-700 min-w-[60px] text-center ${
+          fullWidth ? 'text-base' : 'text-xs md:text-sm'
+        }`}
+      >
         {formatTimerDuration(accumulatedSeconds)}
       </div>
 
@@ -97,9 +111,13 @@ export function GlobalTimer() {
         title={isRunning ? 'Pause timer' : 'Start timer'}
       >
         {isRunning ? (
-          <PauseIcon className="w-4 h-4 md:w-5 md:h-5" />
+          <PauseIcon
+            className={fullWidth ? 'w-5 h-5' : 'w-4 h-4 md:w-5 md:h-5'}
+          />
         ) : (
-          <PlayIcon className="w-4 h-4 md:w-5 md:h-5" />
+          <PlayIcon
+            className={fullWidth ? 'w-5 h-5' : 'w-4 h-4 md:w-5 md:h-5'}
+          />
         )}
       </button>
 
@@ -110,7 +128,9 @@ export function GlobalTimer() {
           className="p-1.5 rounded-md transition-colors text-red-500 hover:text-red-600"
           title="Stop timer and clear"
         >
-          <StopIcon className="w-4 h-4 md:w-5 md:h-5" />
+          <StopIcon
+            className={fullWidth ? 'w-5 h-5' : 'w-4 h-4 md:w-5 md:h-5'}
+          />
         </button>
       )}
     </div>
