@@ -15,6 +15,10 @@ export function useDailyDeck(initialDeck: Card[] = []) {
     setDailyDeck((prev) => prev.filter((c) => c.id !== cardId));
   }, []);
 
+  const removeCardByIndex = useCallback((index: number) => {
+    setDailyDeck((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const loadFromTemplate = useCallback(
     (
       templateCards: Array<{ id: string; sourceCategory: string }>,
@@ -49,6 +53,7 @@ export function useDailyDeck(initialDeck: Card[] = []) {
     dailyDeck,
     setDailyDeck,
     removeCardById,
+    removeCardByIndex,
     loadFromTemplate,
     deckDate,
     setDeckDate,

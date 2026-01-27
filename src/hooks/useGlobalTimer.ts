@@ -15,7 +15,7 @@ export function useGlobalTimer({
   const [timerState, setTimerState] = useState<GlobalTimerState>({
     isRunning: false,
     currentEntry: null,
-    selectedCardId: null,
+    selectedCardIndex: null,
     currentDescription: '',
     startTime: null,
     accumulatedSeconds: 0,
@@ -46,13 +46,12 @@ export function useGlobalTimer({
     };
   }, [timerState.isRunning, timerState.startTime]);
 
-  // Save time entry to card
+  // Save time entry to card by deck index
   const saveTimeEntryToCard = useCallback(
-    (cardId: string, entry: TimeEntry) => {
-      const cardIndex = dailyDeck.findIndex((c) => c.id === cardId);
-      if (cardIndex === -1) return;
-
+    (cardIndex: number, entry: TimeEntry) => {
       const card = dailyDeck[cardIndex];
+      if (!card) return;
+
       const timeEntries = card.timeEntries || [];
       const updatedTimeEntries = [...timeEntries, entry];
 
@@ -83,9 +82,9 @@ export function useGlobalTimer({
         seconds: prev.accumulatedSeconds,
       };
 
-      // Save to card (using closure over saveTimeEntryToCard)
-      if (prev.selectedCardId) {
-        saveTimeEntryToCard(prev.selectedCardId, finalEntry);
+      // Save to card using index
+      if (prev.selectedCardIndex !== null) {
+        saveTimeEntryToCard(prev.selectedCardIndex, finalEntry);
       }
 
       return {
@@ -100,24 +99,30 @@ export function useGlobalTimer({
 
   // Start timer
   const startTimer = useCallback(
-    (cardId?: string, description?: string) => {
+    (cardIndex?: number, description?: string) => {
       // If already running, pause first (outside setTimerState to avoid stale closure)
       if (timerState.isRunning && timerState.currentEntry) {
         pauseTimer();
       }
 
       setTimerState((prev) => {
-        const selectedCard = cardId || prev.selectedCardId;
+        const selectedIndex = cardIndex ?? prev.selectedCardIndex;
         const taskDescription = description || prev.currentDescription;
 
-        if (!selectedCard) {
+        if (selectedIndex === null || selectedIndex === undefined) {
           console.warn('Cannot start timer without selecting a card');
+          return prev;
+        }
+
+        const card = dailyDeck[selectedIndex];
+        if (!card) {
+          console.warn('Selected card index out of bounds');
           return prev;
         }
 
         const newEntry: TimeEntry = {
           id: uuidv4(),
-          cardId: selectedCard,
+          cardId: card.id,
           description: taskDescription,
           startedAt: new Date().toISOString(),
           seconds: 0,
@@ -126,14 +131,14 @@ export function useGlobalTimer({
         return {
           isRunning: true,
           currentEntry: newEntry,
-          selectedCardId: selectedCard,
+          selectedCardIndex: selectedIndex,
           currentDescription: taskDescription,
           startTime: new Date(),
           accumulatedSeconds: 0,
         };
       });
     },
-    [timerState.isRunning, timerState.currentEntry, pauseTimer]
+    [timerState.isRunning, timerState.currentEntry, pauseTimer, dailyDeck]
   );
 
   // Stop timer (same as pause, but clears selection)
@@ -141,14 +146,14 @@ export function useGlobalTimer({
     pauseTimer();
     setTimerState((prev) => ({
       ...prev,
-      selectedCardId: null,
+      selectedCardIndex: null,
       currentDescription: '',
     }));
   }, [pauseTimer]);
 
   // Switch to a different card
   const switchCard = useCallback(
-    (newCardId: string) => {
+    (newCardIndex: number) => {
       // Save current timer if running
       if (timerState.isRunning && timerState.currentEntry) {
         pauseTimer();
@@ -157,7 +162,7 @@ export function useGlobalTimer({
       // Select new card
       setTimerState((prev) => ({
         ...prev,
-        selectedCardId: newCardId,
+        selectedCardIndex: newCardIndex,
         currentDescription: '',
       }));
     },
@@ -173,10 +178,10 @@ export function useGlobalTimer({
   }, []);
 
   // Select card without starting timer
-  const selectCard = useCallback((cardId: string | null) => {
+  const selectCard = useCallback((cardIndex: number | null) => {
     setTimerState((prev) => ({
       ...prev,
-      selectedCardId: cardId,
+      selectedCardIndex: cardIndex,
     }));
   }, []);
 
@@ -190,7 +195,7 @@ export function useGlobalTimer({
     selectCard,
     // Convenience getters
     isRunning: timerState.isRunning,
-    selectedCardId: timerState.selectedCardId,
+    selectedCardIndex: timerState.selectedCardIndex,
     currentDescription: timerState.currentDescription,
     accumulatedSeconds: timerState.accumulatedSeconds,
   };
