@@ -36,12 +36,14 @@ export const AppHeader = ({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
-    <header className="mb-6 flex-shrink-0">
+    <header className="mb-6 flex-shrink-0 space-y-2">
       <div className="flex items-center justify-between">
         <img src={deciLogo} alt="Deci" className="h-12" />
 
-        <div className="flex items-center gap-3">
-          <GlobalTimer />
+        <div className="flex items-center gap-1 md:gap-3">
+          <div className="hidden md:block">
+            <GlobalTimer />
+          </div>
 
           {isUsingFirebase && (
             <button
@@ -157,6 +159,9 @@ export const AppHeader = ({
             )}
           </div>
         </div>
+      </div>
+      <div className="md:hidden">
+        <GlobalTimer fullWidth />
       </div>
     </header>
   );

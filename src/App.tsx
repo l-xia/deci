@@ -82,7 +82,7 @@ function AuthenticatedApp() {
             cards.updateCard(sourceCategory, updatedCard.id, cardData);
           }
         }
-      } else if (selectedCategory) {
+      } else if (selectedCategory && !isOneTimeEdit) {
         // Normal stack card editing
         if (editingCard) {
           cards.updateCard(selectedCategory, editingCard.id, cardData);
@@ -300,7 +300,7 @@ function AuthenticatedApp() {
           }
         }
 
-        dailyDeck.removeCardById(card.id);
+        dailyDeck.removeCardByIndex(index);
       }
     },
     [dailyDeck, cards]

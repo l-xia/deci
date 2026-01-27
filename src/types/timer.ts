@@ -26,8 +26,8 @@ export interface GlobalTimerState {
   isRunning: boolean;
   /** The current time entry being tracked (null if timer not started) */
   currentEntry: TimeEntry | null;
-  /** ID of the card currently selected for timing */
-  selectedCardId: string | null;
+  /** Index of the card in dailyDeck currently selected for timing */
+  selectedCardIndex: number | null;
   /** Current task description being entered/tracked */
   currentDescription: string;
   /** Timestamp when the current timer session started */
