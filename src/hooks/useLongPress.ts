@@ -1,5 +1,8 @@
 import { useRef, useCallback } from 'react';
 
+/** Pixel threshold for movement before canceling long press */
+const DRAG_THRESHOLD_PX = 10;
+
 interface LongPressOptions {
   onLongPress: (e: React.TouchEvent | React.MouseEvent) => void;
   delay?: number;
@@ -51,7 +54,7 @@ export function useLongPress({
       const deltaX = Math.abs(clientX - startPosRef.current.x);
       const deltaY = Math.abs(clientY - startPosRef.current.y);
 
-      if (deltaX > 10 || deltaY > 10) {
+      if (deltaX > DRAG_THRESHOLD_PX || deltaY > DRAG_THRESHOLD_PX) {
         cancel();
       }
     },

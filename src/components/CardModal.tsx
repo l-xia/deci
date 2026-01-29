@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import DOMPurify from 'isomorphic-dompurify';
 import type { Card } from '../types';
 import { VALIDATION_RULES } from '../utils/validators';
 import { cardSchema, type CardFormData } from '../utils/validation/schemas';
+import { sanitizeInput } from '../utils/validation/input';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { ScheduleSelector } from './ScheduleSelector';
 import { FormFieldCounter } from './FormFieldCounter';
 import { SCHEDULE_PRESETS } from '../utils/scheduling';
+import { inputVariants } from '../utils/variants';
 
 interface CardModalProps {
   card?: Card | null;
@@ -67,10 +68,8 @@ function CardModal({
 
   const onSubmit = (data: CardFormData) => {
     const cardData: Partial<Card> = {
-      title: DOMPurify.sanitize(data.title.trim(), { ALLOWED_TAGS: [] }),
-      description: DOMPurify.sanitize(data.description?.trim() || '', {
-        ALLOWED_TAGS: [],
-      }),
+      title: sanitizeInput(data.title),
+      description: sanitizeInput(data.description || ''),
       recurrenceType: data.recurrenceType,
       timesUsed: card?.timesUsed || 0,
     };
@@ -138,11 +137,7 @@ function CardModal({
                 maxLength={VALIDATION_RULES.TITLE_MAX_LENGTH}
                 required
                 aria-required="true"
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent ${
-                  errors.title
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                }`}
+                className={inputVariants({ error: !!errors.title })}
                 placeholder="e.g., Walk the dog"
               />
               <FormFieldCounter
@@ -165,11 +160,7 @@ function CardModal({
               {...register('description')}
               maxLength={VALIDATION_RULES.DESCRIPTION_MAX_LENGTH}
               rows={3}
-              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent resize-y ${
-                errors.description
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:ring-blue-500'
-              }`}
+              className={`${inputVariants({ error: !!errors.description })} resize-y`}
               placeholder="Optional details..."
             />
             <FormFieldCounter
@@ -192,11 +183,7 @@ function CardModal({
               {...register('duration')}
               min={VALIDATION_RULES.DURATION_MIN}
               max={VALIDATION_RULES.DURATION_MAX}
-              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:border-transparent ${
-                errors.duration
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:ring-blue-500'
-              }`}
+              className={inputVariants({ error: !!errors.duration })}
               placeholder="e.g., 30"
             />
             {errors.duration ? (

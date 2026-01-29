@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { addDays, parseISO } from 'date-fns';
+
+/** Delay for scroll animation after completing a card */
+const SCROLL_ANIMATION_DELAY_MS = 300;
 import DailyDeck from './components/DailyDeck';
 import CardModal from './components/CardModal';
 import { DayCompletionModal } from './components/DayCompletionModal';
@@ -192,7 +195,7 @@ function AuthenticatedApp() {
           block: 'center',
         });
       }
-    }, 300);
+    }, SCROLL_ANIMATION_DELAY_MS);
   }, []);
 
   const handleMarkCardComplete = useCallback(

@@ -24,9 +24,17 @@ export function useDailyDeck(initialDeck: Card[] = []) {
       templateCards: Array<{ id: string; sourceCategory: string }>,
       cards: CardsByCategory
     ) => {
+      const cardMap = new Map<string, Card>();
+      for (const category of Object.keys(cards) as Array<
+        keyof CardsByCategory
+      >) {
+        for (const card of cards[category] || []) {
+          cardMap.set(card.id, card);
+        }
+      }
+
       const loadedCards = templateCards
         .map((templateCard) => {
-          // Validate sourceCategory before using it
           if (!isCategoryKey(templateCard.sourceCategory)) {
             console.warn(
               `Invalid sourceCategory: ${templateCard.sourceCategory} for card ${templateCard.id}`
@@ -34,11 +42,10 @@ export function useDailyDeck(initialDeck: Card[] = []) {
             return null;
           }
 
-          const category = templateCard.sourceCategory;
-          const card = cards[category]?.find(
-            (c: Card) => c.id === templateCard.id
-          );
-          return card ? { ...card, sourceCategory: category } : null;
+          const card = cardMap.get(templateCard.id);
+          return card
+            ? { ...card, sourceCategory: templateCard.sourceCategory }
+            : null;
         })
         .filter(Boolean) as Card[];
 

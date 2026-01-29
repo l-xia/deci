@@ -25,6 +25,7 @@
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-router": "^1.139.10",
+    "class-variance-authority": "^0.7.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.6.0",
     "isomorphic-dompurify": "^2.32.0",
