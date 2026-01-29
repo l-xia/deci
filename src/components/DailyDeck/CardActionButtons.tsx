@@ -1,4 +1,10 @@
-import { PencilIcon, CheckIcon, ArrowUturnLeftIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import {
+  PencilIcon,
+  CheckIcon,
+  ArrowUturnLeftIcon,
+  ChevronDownIcon,
+} from '@heroicons/react/24/outline';
+import { iconButtonVariants, iconSizeVariants } from '../../utils/variants';
 
 interface CardActionButtonsProps {
   isCompleted: boolean | undefined;
@@ -19,18 +25,18 @@ export const CardActionButtons = ({
   onDelete,
   onToggleExpand,
 }: CardActionButtonsProps) => {
-  const iconSize = isLarge ? 'w-5 h-5' : 'w-4 h-4';
-  const buttonPadding = isLarge ? 'p-1.5' : 'p-1';
+  const buttonSize = isLarge ? 'md' : 'sm';
+  const iconSize = isLarge ? 'md' : 'sm';
 
   if (isCompleted) {
     return onToggleExpand ? (
       <button
         onClick={onToggleExpand}
-        className={`${buttonPadding} text-gray-400 hover:text-gray-700 transition-colors`}
+        className={iconButtonVariants({ size: buttonSize, intent: 'default' })}
         title={isExpanded ? 'Collapse' : 'Expand'}
       >
         <ChevronDownIcon
-          className={`${iconSize} transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`${iconSizeVariants({ size: iconSize })} transition-transform ${isExpanded ? 'rotate-180' : ''}`}
         />
       </button>
     ) : null;
@@ -40,24 +46,24 @@ export const CardActionButtons = ({
     <div className="flex gap-1">
       <button
         onClick={onEdit}
-        className={`${buttonPadding} text-gray-400 hover:text-blue-600 transition-colors`}
+        className={iconButtonVariants({ size: buttonSize, intent: 'primary' })}
         title="Edit"
       >
-        <PencilIcon className={iconSize} />
+        <PencilIcon className={iconSizeVariants({ size: iconSize })} />
       </button>
       <button
         onClick={onComplete}
-        className={`${buttonPadding} text-gray-400 hover:text-green-600 transition-colors`}
+        className={iconButtonVariants({ size: buttonSize, intent: 'success' })}
         title="Mark Complete"
       >
-        <CheckIcon className={iconSize} />
+        <CheckIcon className={iconSizeVariants({ size: iconSize })} />
       </button>
       <button
         onClick={onDelete}
-        className={`${buttonPadding} text-gray-400 hover:text-orange-600 transition-colors`}
+        className={iconButtonVariants({ size: buttonSize, intent: 'warning' })}
         title="Remove from deck"
       >
-        <ArrowUturnLeftIcon className={iconSize} />
+        <ArrowUturnLeftIcon className={iconSizeVariants({ size: iconSize })} />
       </button>
     </div>
   );

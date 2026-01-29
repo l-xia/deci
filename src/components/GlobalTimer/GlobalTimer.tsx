@@ -2,6 +2,12 @@ import { useMemo } from 'react';
 import { useGlobalTimerContext, useDailyDeckContext } from '../../context';
 import { formatTimerDuration } from '../../utils/formatTimerDuration';
 import { PlayIcon, PauseIcon, StopIcon } from '@heroicons/react/24/solid';
+import {
+  timerButtonVariants,
+  timerDisplayVariants,
+  compactInputVariants,
+  iconSizeVariants,
+} from '../../utils/variants';
 
 interface GlobalTimerProps {
   fullWidth?: boolean;
@@ -55,19 +61,21 @@ export function GlobalTimer({ fullWidth = false }: GlobalTimerProps) {
     [dailyDeck]
   );
 
+  const iconClass = fullWidth
+    ? iconSizeVariants({ size: 'md' })
+    : `${iconSizeVariants({ size: 'sm' })} md:${iconSizeVariants({ size: 'md' })}`;
+
   return (
     <div
       className={`flex items-center ${fullWidth ? 'gap-2 w-full' : 'gap-1 md:gap-2'}`}
     >
-      {/* Task Description Input - hidden on compact, shown on fullWidth */}
+      {/* Task Description Input */}
       <input
         type="text"
         value={currentDescription}
         onChange={handleDescriptionChange}
         placeholder="What are you working on?"
-        className={`text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-          fullWidth ? 'flex-1 min-w-0' : 'hidden md:block text-xs w-48'
-        }`}
+        className={`${compactInputVariants({ fullWidth })} ${!fullWidth ? 'hidden md:block w-48' : ''}`}
         disabled={isRunning}
       />
 
@@ -91,11 +99,7 @@ export function GlobalTimer({ fullWidth = false }: GlobalTimerProps) {
       </select>
 
       {/* Timer Display */}
-      <div
-        className={`font-mono font-semibold text-gray-700 min-w-[60px] text-center ${
-          fullWidth ? 'text-base' : 'text-xs md:text-sm'
-        }`}
-      >
+      <div className={timerDisplayVariants({ fullWidth })}>
         {formatTimerDuration(accumulatedSeconds)}
       </div>
 
@@ -103,21 +107,15 @@ export function GlobalTimer({ fullWidth = false }: GlobalTimerProps) {
       <button
         onClick={handlePlayPause}
         disabled={selectedCardIndex === null && !isRunning}
-        className={`p-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-          isRunning
-            ? 'text-yellow-500 hover:text-yellow-600'
-            : 'text-green-600 hover:text-green-700'
-        }`}
+        className={timerButtonVariants({
+          state: isRunning ? 'running' : 'paused',
+        })}
         title={isRunning ? 'Pause timer' : 'Start timer'}
       >
         {isRunning ? (
-          <PauseIcon
-            className={fullWidth ? 'w-5 h-5' : 'w-4 h-4 md:w-5 md:h-5'}
-          />
+          <PauseIcon className={iconClass} />
         ) : (
-          <PlayIcon
-            className={fullWidth ? 'w-5 h-5' : 'w-4 h-4 md:w-5 md:h-5'}
-          />
+          <PlayIcon className={iconClass} />
         )}
       </button>
 
@@ -125,12 +123,10 @@ export function GlobalTimer({ fullWidth = false }: GlobalTimerProps) {
       {(isRunning || accumulatedSeconds > 0) && (
         <button
           onClick={stopTimer}
-          className="p-1.5 rounded-md transition-colors text-red-500 hover:text-red-600"
+          className={timerButtonVariants({ state: 'stopped' })}
           title="Stop timer and clear"
         >
-          <StopIcon
-            className={fullWidth ? 'w-5 h-5' : 'w-4 h-4 md:w-5 md:h-5'}
-          />
+          <StopIcon className={iconClass} />
         </button>
       )}
     </div>

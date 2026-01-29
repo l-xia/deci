@@ -13,6 +13,7 @@ import deciLogo from '../assets/deci_logo.svg';
 import LoadingSpinner from './LoadingSpinner';
 import { GlobalTimer } from './GlobalTimer/GlobalTimer';
 import type { SaveStatus } from '../types/common';
+import { saveStatusVariants, saveStatusTextVariants } from '../utils/variants';
 
 interface AppHeaderProps {
   userEmail: string;
@@ -24,6 +25,15 @@ interface AppHeaderProps {
   onRetrySave: () => void;
 }
 
+const getSaveStatusKey = (
+  status: SaveStatus
+): 'saving' | 'saved' | 'error' | 'idle' => {
+  if (status === 'saving') return 'saving';
+  if (status === 'saved') return 'saved';
+  if (status === 'error') return 'error';
+  return 'idle';
+};
+
 export const AppHeader = ({
   userEmail,
   isUsingFirebase,
@@ -34,6 +44,7 @@ export const AppHeader = ({
   onRetrySave,
 }: AppHeaderProps) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const statusKey = getSaveStatusKey(saveStatus);
 
   return (
     <header className="mb-6 flex-shrink-0 space-y-2">
@@ -49,15 +60,7 @@ export const AppHeader = ({
             <button
               onClick={onRefresh}
               disabled={isRefreshing || saveStatus === 'saving'}
-              className={`flex items-center gap-2 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 underline underline-offset-4 ${
-                saveStatus === 'saving'
-                  ? 'decoration-blue-500 text-blue-500'
-                  : saveStatus === 'saved'
-                    ? 'decoration-green-600 text-green-600'
-                    : saveStatus === 'error'
-                      ? 'decoration-red-600 text-red-600'
-                      : 'decoration-gray-400 text-gray-600'
-              }`}
+              className={saveStatusVariants({ status: statusKey })}
               title={isRefreshing ? 'Refreshing...' : 'Refresh data from cloud'}
             >
               {saveStatus === 'saving' && (
@@ -74,17 +77,7 @@ export const AppHeader = ({
                   className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
                 />
               )}
-              <span
-                className={
-                  saveStatus === 'saving'
-                    ? 'text-blue-500'
-                    : saveStatus === 'saved'
-                      ? 'text-green-600'
-                      : saveStatus === 'error'
-                        ? 'text-red-600'
-                        : 'text-gray-600'
-                }
-              >
+              <span className={saveStatusTextVariants({ status: statusKey })}>
                 {isRefreshing
                   ? 'Refreshing...'
                   : saveStatus === 'saving'
