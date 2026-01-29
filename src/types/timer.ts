@@ -34,4 +34,6 @@ export interface GlobalTimerState {
   startTime: Date | null;
   /** Accumulated seconds for the current timer session */
   accumulatedSeconds: number;
+  /** Base seconds accumulated from previous pause/resume cycles */
+  baseSeconds: number;
 }

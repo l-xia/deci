@@ -19,6 +19,7 @@ export function useGlobalTimer({
     currentDescription: '',
     startTime: null,
     accumulatedSeconds: 0,
+    baseSeconds: 0,
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -30,7 +31,10 @@ export function useGlobalTimer({
         const elapsed = Math.floor(
           (Date.now() - timerState.startTime!.getTime()) / 1000
         );
-        setTimerState((prev) => ({ ...prev, accumulatedSeconds: elapsed }));
+        setTimerState((prev) => ({
+          ...prev,
+          accumulatedSeconds: prev.baseSeconds + elapsed,
+        }));
       }, 1000);
     } else {
       if (intervalRef.current) {
@@ -71,41 +75,40 @@ export function useGlobalTimer({
     [dailyDeck, updateCard]
   );
 
-  // Pause timer - defined before startTimer to avoid reference-before-declaration
+  // Pause timer - just pauses without saving to card
   const pauseTimer = useCallback(() => {
     setTimerState((prev) => {
-      if (!prev.isRunning || !prev.currentEntry) return prev;
-
-      const finalEntry: TimeEntry = {
-        ...prev.currentEntry,
-        endedAt: new Date().toISOString(),
-        seconds: prev.accumulatedSeconds,
-      };
-
-      // Save to card using index
-      if (prev.selectedCardIndex !== null) {
-        saveTimeEntryToCard(prev.selectedCardIndex, finalEntry);
-      }
+      if (!prev.isRunning) return prev;
 
       return {
         ...prev,
         isRunning: false,
-        currentEntry: null,
         startTime: null,
-        accumulatedSeconds: 0,
+        // Store accumulated time in baseSeconds so resume can continue from here
+        baseSeconds: prev.accumulatedSeconds,
       };
     });
-  }, [saveTimeEntryToCard]);
+  }, []);
 
-  // Start timer
+  // Start timer (or resume if paused)
   const startTimer = useCallback(
     (cardIndex?: number, description?: string) => {
-      // If already running, pause first (outside setTimerState to avoid stale closure)
-      if (timerState.isRunning && timerState.currentEntry) {
-        pauseTimer();
-      }
-
       setTimerState((prev) => {
+        // If paused with an existing entry, just resume
+        if (!prev.isRunning && prev.currentEntry) {
+          return {
+            ...prev,
+            isRunning: true,
+            startTime: new Date(),
+          };
+        }
+
+        // If already running, do nothing (shouldn't happen normally)
+        if (prev.isRunning) {
+          return prev;
+        }
+
+        // Starting fresh - create a new entry
         const selectedIndex = cardIndex ?? prev.selectedCardIndex;
         const taskDescription = description || prev.currentDescription;
 
@@ -135,38 +138,67 @@ export function useGlobalTimer({
           currentDescription: taskDescription,
           startTime: new Date(),
           accumulatedSeconds: 0,
+          baseSeconds: 0,
         };
       });
     },
-    [timerState.isRunning, timerState.currentEntry, pauseTimer, dailyDeck]
+    [dailyDeck]
   );
 
-  // Stop timer (same as pause, but clears selection)
+  // Stop timer - saves entry to card and clears everything
   const stopTimer = useCallback(() => {
-    pauseTimer();
-    setTimerState((prev) => ({
-      ...prev,
-      selectedCardIndex: null,
-      currentDescription: '',
-    }));
-  }, [pauseTimer]);
-
-  // Switch to a different card
-  const switchCard = useCallback(
-    (newCardIndex: number) => {
-      // Save current timer if running
-      if (timerState.isRunning && timerState.currentEntry) {
-        pauseTimer();
+    setTimerState((prev) => {
+      // Save entry to card if there is one
+      if (prev.currentEntry && prev.selectedCardIndex !== null) {
+        const finalEntry: TimeEntry = {
+          ...prev.currentEntry,
+          endedAt: new Date().toISOString(),
+          seconds: prev.accumulatedSeconds,
+        };
+        saveTimeEntryToCard(prev.selectedCardIndex, finalEntry);
       }
 
-      // Select new card
-      setTimerState((prev) => ({
+      return {
         ...prev,
-        selectedCardIndex: newCardIndex,
+        isRunning: false,
+        currentEntry: null,
+        selectedCardIndex: null,
         currentDescription: '',
-      }));
+        startTime: null,
+        accumulatedSeconds: 0,
+        baseSeconds: 0,
+      };
+    });
+  }, [saveTimeEntryToCard]);
+
+  // Switch to a different card - saves current entry and resets timer
+  const switchCard = useCallback(
+    (newCardIndex: number) => {
+      setTimerState((prev) => {
+        // Save current entry if there is one
+        if (prev.currentEntry && prev.selectedCardIndex !== null) {
+          const finalEntry: TimeEntry = {
+            ...prev.currentEntry,
+            endedAt: new Date().toISOString(),
+            seconds: prev.accumulatedSeconds,
+          };
+          saveTimeEntryToCard(prev.selectedCardIndex, finalEntry);
+        }
+
+        // Switch to new card with fresh timer state
+        return {
+          ...prev,
+          isRunning: false,
+          currentEntry: null,
+          selectedCardIndex: newCardIndex,
+          currentDescription: '',
+          startTime: null,
+          accumulatedSeconds: 0,
+          baseSeconds: 0,
+        };
+      });
     },
-    [timerState, pauseTimer]
+    [saveTimeEntryToCard]
   );
 
   // Update description
